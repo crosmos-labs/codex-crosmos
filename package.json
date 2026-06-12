@@ -1,0 +1,52 @@
+{
+    "name": "@crosmos/codex",
+    "version": "0.1.0",
+    "description": "automatic, invisible memory for the openai codex cli, powered by crosmos.",
+    "scripts": {
+        "test": "node --import tsx --test test/*.test.ts",
+        "build": "node build.mjs",
+        "typecheck": "tsc --noEmit",
+        "lint": "biome check .",
+        "lint:fix": "biome check --write .",
+        "format": "biome format --write .",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "codex",
+        "openai-codex",
+        "memory",
+        "ai",
+        "rag",
+        "knowledge-graph",
+        "crosmos"
+    ],
+    "author": "crosmos",
+    "license": "MIT",
+    "type": "module",
+    "bin": {
+        "crosmos-codex": "dist/cli.mjs"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "ROADMAP.md"
+    ],
+    "dependencies": {
+        "@clack/prompts": "^1.5.1",
+        "crosmos": "^0.1.0",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.0",
+        "@types/node": "^25.9.3",
+        "esbuild": "^0.28.1",
+        "tsx": "^4.22.4",
+        "typescript": "^6.0.3"
+    },
+    "allowScripts": {
+        "esbuild@0.28.1": true
+    }
+}

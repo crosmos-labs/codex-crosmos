@@ -1,0 +1,10 @@
+{"type":"session_meta","payload":{"id":"abc","cwd":"/tmp/proj"}}
+{"type":"turn_context","payload":{}}
+{"type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"system noise that must be ignored"}]}}
+{"type":"event_msg","payload":{"type":"user_message","message":"first user question"}}
+{"type":"response_item","payload":{"type":"reasoning"}}
+{"type":"event_msg","payload":{"type":"agent_message","message":"assistant reply leaking api_key=SUPERSECRETVALUE here"}}
+{"type":"event_msg","payload":{"type":"token_count"}}
+{"type":"event_msg","payload":{"type":"agent_message","message":""}}
+{"type":"event_msg","payload":{"type":"user_message","message":"second question with key csk_abcdef1234567890ABCDEF"}}
+not valid json
