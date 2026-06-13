@@ -36,7 +36,7 @@ test("Stop skips trivial deltas", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        everyNTurns: 1,
+        captureTurns: 1,
     });
 
     assert.equal(client.ingests.length, 0);
@@ -52,7 +52,7 @@ test("Stop waits for N meaningful turns, then captures the batch once", async ()
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        everyNTurns: 2,
+        captureTurns: 2,
     };
 
     await capture(client as unknown as Crosmos, opts);
@@ -78,7 +78,7 @@ test("Stop does not re-capture a batch on a later empty delta", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        everyNTurns: 2,
+        captureTurns: 2,
     };
 
     await capture(client as unknown as Crosmos, opts);
@@ -89,23 +89,21 @@ test("Stop does not re-capture a batch on a later empty delta", async () => {
 });
 
 test("PreCompact flushes pending turns below the N threshold", async () => {
-    const transcript = writeTranscript([
-        event("user_message", "a single plain four word turn"),
-    ]);
+    const transcript = writeTranscript([event("user_message", "a single plain four word turn")]);
     const client = fakeClient();
 
     await capture(client as unknown as Crosmos, {
         event: "PreCompact",
         transcriptPath: transcript,
         sessionId: "s1",
-        everyNTurns: 3,
+        captureTurns: 3,
     });
 
     assert.equal(client.ingests.length, 1);
     assert.equal(client.ingests[0].messages.length, 1);
 });
 
-test("everyNTurns 0 disables capture", async () => {
+test("captureTurns 0 disables capture", async () => {
     const transcript = writeTranscript([
         event("user_message", "plain four word update one"),
         event("agent_message", "plain four word update two"),
@@ -116,7 +114,7 @@ test("everyNTurns 0 disables capture", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        everyNTurns: 0,
+        captureTurns: 0,
     });
 
     assert.equal(client.ingests.length, 0);

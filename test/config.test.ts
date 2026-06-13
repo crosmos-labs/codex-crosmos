@@ -10,7 +10,7 @@ const ENV_KEYS = [
     "CROSMOS_SPACE_ID",
     "CROSMOS_RECALL_LIMIT",
     "CROSMOS_RECALL_MODE",
-    "CROSMOS_CAPTURE_EVERY_N_TURNS",
+    "CROSMOS_CAPTURE_TURNS",
     "CROSMOS_DEBUG",
 ];
 let saved: Record<string, string | undefined>;
@@ -33,7 +33,7 @@ test("defaults when no file exists", () => {
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 5);
     assert.equal(cfg.recallMode, "auto");
-    assert.equal(cfg.captureEveryNTurns, 3);
+    assert.equal(cfg.captureTurns, 3);
     assert.equal(cfg.debug, false);
 });
 
@@ -43,14 +43,14 @@ test("reads values from the config file", () => {
         JSON.stringify({
             recallLimit: 9,
             recallMode: "always",
-            captureEveryNTurns: 5,
+            captureTurns: 5,
             spaceId: "from-file",
         })
     );
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 9);
     assert.equal(cfg.recallMode, "always");
-    assert.equal(cfg.captureEveryNTurns, 5);
+    assert.equal(cfg.captureTurns, 5);
     assert.equal(cfg.spaceId, "from-file");
 });
 
@@ -58,13 +58,13 @@ test("env overrides file", () => {
     writeFileSync(configPath(), JSON.stringify({ recallLimit: 9, spaceId: "from-file" }));
     process.env.CROSMOS_RECALL_LIMIT = "3";
     process.env.CROSMOS_RECALL_MODE = "off";
-    process.env.CROSMOS_CAPTURE_EVERY_N_TURNS = "2";
+    process.env.CROSMOS_CAPTURE_TURNS = "2";
     process.env.CROSMOS_SPACE_ID = "from-env";
     process.env.CROSMOS_DEBUG = "1";
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 3);
     assert.equal(cfg.recallMode, "off");
-    assert.equal(cfg.captureEveryNTurns, 2);
+    assert.equal(cfg.captureTurns, 2);
     assert.equal(cfg.spaceId, "from-env");
     assert.equal(cfg.debug, true);
 });

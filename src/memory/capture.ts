@@ -13,10 +13,10 @@ export async function capture(
         cwd?: string;
         branch?: string;
         sessionId?: string;
-        everyNTurns: number;
+        captureTurns: number;
     }
 ): Promise<void> {
-    if (opts.everyNTurns === 0) {
+    if (opts.captureTurns === 0) {
         log("hook", opts.event, "capture skipped reason=disabled");
         return;
     }
@@ -41,7 +41,7 @@ export async function capture(
 
     const turns = meaningfulTurns(delta);
     const maxDeltaLine = Math.max(...delta.map((t) => t.line));
-    if (!shouldCaptureDelta(opts.event, turns, opts.everyNTurns)) {
+    if (!shouldCaptureDelta(opts.event, turns, opts.captureTurns)) {
         if (turns.length === 0) {
             saveSessionState(key, { ...state, capturedLine: maxDeltaLine });
             log(
@@ -80,10 +80,14 @@ export async function capture(
     log("hook", opts.event, "capture proceed", `turns=${turns.length}`, `job_id=${res.job_id}`);
 }
 
-export function shouldCaptureDelta(event: string, meaningful: Turn[], everyNTurns: number): boolean {
+export function shouldCaptureDelta(
+    event: string,
+    meaningful: Turn[],
+    captureTurns: number
+): boolean {
     if (meaningful.length === 0) return false;
     if (event === "PreCompact") return true; // always flush pending turns
-    return meaningful.length >= everyNTurns; // Stop batches by turn count
+    return meaningful.length >= captureTurns; // Stop batches by turn count
 }
 
 function meaningfulTurns(turns: Turn[]): Turn[] {
