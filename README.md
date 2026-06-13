@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.png" alt="crosmos for codex" width="100%" />
+<img src="./docs/banner.png" alt="crosmos for codex" width="100%" />
 
 # @crosmos/codex
 

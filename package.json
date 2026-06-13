@@ -1,6 +1,6 @@
 {
     "name": "@crosmos/codex",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "automatic, invisible memory for the openai codex cli, powered by crosmos.",
     "scripts": {
         "test": "node --import tsx --test test/*.test.ts",
