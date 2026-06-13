@@ -13,12 +13,10 @@
 
 </div>
 
----
-
+<br>
+ 
 You don't manage memory. You use codex normally — relevant context is recalled before each
 prompt, and your sessions are saved automatically. Nothing to remember, nothing to type.
-
----
 
 ## Requirements
 
