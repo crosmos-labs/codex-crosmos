@@ -5,7 +5,7 @@ import * as p from "@clack/prompts";
 import { getApiKey, saveApiKey } from "../client/credentials.js";
 import { createClient } from "../client/crosmos.js";
 import { EVENTS } from "../codex/events.js";
-import { installHooks } from "../codex/hooks-config.js";
+import { assertWritable, installHooks } from "../codex/hooks-config.js";
 import { writeSkill } from "../codex/skill.js";
 import { pluginDir } from "../lib/paths.js";
 import { resolveSpaceId } from "../memory/space.js";
@@ -49,6 +49,14 @@ export async function install(): Promise<void> {
         process.exit(1);
     }
     s.stop("connected");
+
+    // Validate hooks.json before writing anything, so we never clobber a corrupt file.
+    try {
+        assertWritable();
+    } catch (err) {
+        p.log.error(String(err));
+        process.exit(1);
+    }
 
     const self = fileURLToPath(import.meta.url);
     const target = join(pluginDir(), "cli.mjs");

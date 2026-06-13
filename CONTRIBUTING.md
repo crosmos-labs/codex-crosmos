@@ -60,6 +60,22 @@ export CROSMOS_DEBUG=1   # fish: set -x CROSMOS_DEBUG 1 — set before launching
 tail -f /tmp/crosmos-codex-*.log   # in another terminal
 ```
 
+your api key is saved to `~/.crosmos/credentials.json` on first install, so you **log in once** —
+it persists across terminals and is shared with other crosmos tooling. no per-terminal env needed.
+
 after changing code, re-run `npm run build && node dist/cli.mjs install` (it re-copies the
-bundle) and re-approve via `/hooks` since the hash changed. clean up with
-`node dist/cli.mjs uninstall`.
+bundle) and re-approve via `/hooks` since the hash changed.
+
+## uninstall / rollback
+
+```sh
+node dist/cli.mjs uninstall
+```
+
+it removes only what this plugin created — our hook entries in `hooks.json`, the `crosmos-save`
+skill, the bundle dir, and `crosmos.json` — and reports each. your crosmos **login and saved
+memories are left untouched** (uninstalling a plugin shouldn't log you out everywhere).
+
+safety guarantees for `hooks.json`: install **backs it up** (`hooks.json.bak`) and writes
+atomically; if it's ever present-but-corrupt, install/uninstall **abort without touching it** rather
+than risk clobbering hooks from other tools.

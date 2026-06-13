@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
-import { hooksPath, installHooks, uninstallHooks } from "../src/codex/hooks-config.js";
+import {
+    assertWritable,
+    hooksPath,
+    installHooks,
+    uninstallHooks,
+} from "../src/codex/hooks-config.js";
 
 const MARKER = "/home/u/.codex/crosmos/cli.mjs";
 const specs = [
@@ -71,4 +76,23 @@ test("uninstall removes ours but keeps foreign", () => {
     assert.ok(all.includes("node other.js"));
     assert.ok(!all.includes(MARKER));
     assert.equal(h.Stop, undefined);
+});
+
+test("never clobbers a corrupt hooks.json — aborts and leaves it intact", () => {
+    writeFileSync(hooksPath(), "{ this is not json");
+    assert.throws(() => assertWritable());
+    assert.throws(() => installHooks(specs, MARKER));
+    assert.equal(readFileSync(hooksPath(), "utf8"), "{ this is not json");
+});
+
+test("backs up hooks.json before modifying it", () => {
+    writeFileSync(hooksPath(), JSON.stringify({ hooks: {} }));
+    installHooks(specs, MARKER);
+    assert.ok(existsSync(`${hooksPath()}.bak`));
+});
+
+test("uninstall reports count and is safe when nothing is installed", () => {
+    assert.equal(uninstallHooks(MARKER), 0);
+    installHooks(specs, MARKER);
+    assert.equal(uninstallHooks(MARKER), 2);
 });

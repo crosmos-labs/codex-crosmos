@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { skillsDir } from "../lib/paths.js";
 
@@ -11,10 +11,10 @@ export function writeSkill(cliPath: string): void {
     writeFileSync(join(dir(), "SKILL.md"), body(cliPath));
 }
 
-export function removeSkill(): void {
-    try {
-        rmSync(dir(), { recursive: true, force: true });
-    } catch {}
+export function removeSkill(): boolean {
+    if (!existsSync(dir())) return false;
+    rmSync(dir(), { recursive: true, force: true });
+    return true;
 }
 
 function body(cliPath: string): string {

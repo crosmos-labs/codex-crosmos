@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { writeFileAtomic } from "../lib/fsx.js";
 
 const DEFAULT_BASE_URL = "https://api.crosmos.dev";
 
@@ -41,5 +42,5 @@ export function getBaseUrl(): string {
 export function saveApiKey(apiKey: string): void {
     mkdirSync(dir(), { recursive: true, mode: 0o700 });
     const creds: Credentials = { ...read(), api_key: apiKey, base_url: getBaseUrl() };
-    writeFileSync(file(), `${JSON.stringify(creds, null, 2)}\n`, { mode: 0o600 });
+    writeFileAtomic(file(), `${JSON.stringify(creds, null, 2)}\n`, 0o600);
 }

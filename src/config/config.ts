@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { writeFileAtomic } from "../lib/fsx.js";
 import { codexHome } from "../lib/paths.js";
 import { type Config, configSchema } from "./schema.js";
 
@@ -9,6 +10,12 @@ function file(): string {
 
 export function configPath(): string {
     return file();
+}
+
+export function removeConfig(): boolean {
+    if (!existsSync(file())) return false;
+    rmSync(file(), { force: true });
+    return true;
 }
 
 export function loadConfig(): Config {
@@ -39,6 +46,6 @@ export function loadConfig(): Config {
 export function saveConfig(patch: Partial<Config>): Config {
     const next = { ...loadConfig(), ...patch };
     mkdirSync(codexHome(), { recursive: true });
-    writeFileSync(file(), `${JSON.stringify(next, null, 2)}\n`);
+    writeFileAtomic(file(), `${JSON.stringify(next, null, 2)}\n`);
     return next;
 }
