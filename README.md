@@ -23,8 +23,6 @@ prompt, and your sessions are saved automatically. Nothing to remember, nothing 
 - Node 18+ (you already have it if you can run `npx`).
 - A crosmos api key (`csk_…`) from [console.crosmos.dev](https://console.crosmos.dev).
 
----
-
 ## Install
 
 ```sh
@@ -34,8 +32,6 @@ npx @crosmos/codex install
 The installer asks for your api key (or reuses `~/.crosmos/credentials.json` if you've set
 up crosmos before), registers the hooks, and installs the `crosmos-save` skill. Then run
 `/hooks` inside codex once to approve — and you're done.
-
----
 
 ## What the installer writes
 
@@ -63,8 +59,6 @@ The skill file is just an instruction telling codex it *can* save a note when yo
 open it and read it. Secrets are redacted before anything leaves your machine, and the
 hooks **fail open**, so memory being unavailable never blocks your codex session.
 
----
-
 ## How it works
 
 - **Recall** — before each prompt, the most relevant memories for your project are pulled in silently.
@@ -74,16 +68,12 @@ hooks **fail open**, so memory being unavailable never blocks your codex session
 Everything runs in-process via the `crosmos` sdk and **fails open**: if memory is ever
 unavailable, your codex session is never blocked.
 
----
-
 ## Commands
 
 ```sh
 crosmos-codex status      # show key, space, and hook registration
 crosmos-codex uninstall   # remove hooks + skill (memories are kept)
 ```
-
----
 
 ## Configuration
 
@@ -114,8 +104,6 @@ The `~/.codex/crosmos.json` file accepts the same settings as keys:
 }
 ```
 
----
-
 ## Development
 
 ```sh
@@ -127,13 +115,9 @@ npm run lint       # biome
 
 See [ROADMAP.md](./ROADMAP.md) for what's shipped in v0 and what's planned next.
 
----
-
 ## Contributing
 
 Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
-
----
 
 ## License
 
