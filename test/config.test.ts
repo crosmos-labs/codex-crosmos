@@ -11,6 +11,7 @@ const ENV_KEYS = [
     "CROSMOS_RECALL_LIMIT",
     "CROSMOS_RECALL_MODE",
     "CROSMOS_CAPTURE_MODE",
+    "CROSMOS_CAPTURE_EVERY_N_TURNS",
     "CROSMOS_DEBUG",
 ];
 let saved: Record<string, string | undefined>;
@@ -34,6 +35,7 @@ test("defaults when no file exists", () => {
     assert.equal(cfg.recallLimit, 5);
     assert.equal(cfg.recallMode, "auto");
     assert.equal(cfg.captureMode, "auto");
+    assert.equal(cfg.captureEveryNTurns, 3);
     assert.equal(cfg.debug, false);
 });
 
@@ -59,12 +61,14 @@ test("env overrides file", () => {
     process.env.CROSMOS_RECALL_LIMIT = "3";
     process.env.CROSMOS_RECALL_MODE = "off";
     process.env.CROSMOS_CAPTURE_MODE = "off";
+    process.env.CROSMOS_CAPTURE_EVERY_N_TURNS = "2";
     process.env.CROSMOS_SPACE_ID = "from-env";
     process.env.CROSMOS_DEBUG = "1";
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 3);
     assert.equal(cfg.recallMode, "off");
     assert.equal(cfg.captureMode, "off");
+    assert.equal(cfg.captureEveryNTurns, 2);
     assert.equal(cfg.spaceId, "from-env");
     assert.equal(cfg.debug, true);
 });

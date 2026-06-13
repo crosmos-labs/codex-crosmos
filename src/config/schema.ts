@@ -7,6 +7,7 @@ export const configSchema = z.object({
     recallLimit: z.number().int().positive().default(5),
     recallMode: z.enum(["auto", "always", "off"]).default("auto"),
     captureMode: z.enum(["auto", "off"]).default("auto"),
+    captureEveryNTurns: z.number().int().positive().default(3),
     debug: z.boolean().default(false),
 });
 

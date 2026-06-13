@@ -6,9 +6,6 @@ import { log } from "../lib/logger.js";
 import { resolveSpaceId } from "./space.js";
 import { loadSessionState, saveSessionState, sessionKey } from "./state.js";
 
-const SIGNAL =
-    /\b(remember|decided|prefer|todo|task|next|bug|fix|release|version|architecture|design|endpoint|settings?|config|blocked|waiting|follow up)\b/i;
-
 export async function capture(
     client: Crosmos,
     opts: {
@@ -18,6 +15,7 @@ export async function capture(
         branch?: string;
         sessionId?: string;
         mode: Config["captureMode"];
+        everyNTurns: number;
     }
 ): Promise<void> {
     if (opts.mode === "off") {
@@ -45,7 +43,7 @@ export async function capture(
 
     const turns = meaningfulTurns(delta);
     const maxDeltaLine = Math.max(...delta.map((t) => t.line));
-    if (!shouldCaptureDelta(opts.event, delta, turns)) {
+    if (!shouldCaptureDelta(opts.event, turns, opts.everyNTurns)) {
         if (turns.length === 0) {
             saveSessionState(key, { ...state, capturedLine: maxDeltaLine });
             log(
@@ -84,15 +82,12 @@ export async function capture(
     log("hook", opts.event, "capture proceed", `turns=${turns.length}`, `job_id=${res.job_id}`);
 }
 
-export function shouldCaptureDelta(event: string, delta: Turn[], meaningful: Turn[]): boolean {
+export function shouldCaptureDelta(event: string, meaningful: Turn[], everyNTurns: number): boolean {
     if (meaningful.length === 0) return false;
-    if (event === "PreCompact") return true;
-    return meaningful.length >= 2 || delta.some((t) => SIGNAL.test(t.content));
+    if (event === "PreCompact") return true; // always flush pending turns
+    return meaningful.length >= everyNTurns; // Stop batches by turn count
 }
 
 function meaningfulTurns(turns: Turn[]): Turn[] {
-    return turns.filter((t) => {
-        const words = t.content.trim().split(/\s+/).filter(Boolean).length;
-        return words >= 4 || SIGNAL.test(t.content);
-    });
+    return turns.filter((t) => t.content.trim().split(/\s+/).filter(Boolean).length >= 4);
 }

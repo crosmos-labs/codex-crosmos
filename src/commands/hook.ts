@@ -59,6 +59,7 @@ export async function runHookCommand(args: string[]): Promise<void> {
                 branch: gitBranch(payload.cwd),
                 sessionId: payload.session_id,
                 mode: cfg.captureMode,
+                everyNTurns: cfg.captureEveryNTurns,
             });
         });
         return;

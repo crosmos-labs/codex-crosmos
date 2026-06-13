@@ -37,12 +37,13 @@ test("Stop skips trivial deltas", async () => {
         transcriptPath: transcript,
         sessionId: "s1",
         mode: "auto",
+        everyNTurns: 1,
     });
 
     assert.equal(client.ingests.length, 0);
 });
 
-test("Stop advances cursor for empty deltas only", async () => {
+test("Stop waits for N meaningful turns, then captures the batch once", async () => {
     const transcript = writeTranscript([
         event("user_message", "ok"),
         event("agent_message", "done"),
@@ -53,13 +54,14 @@ test("Stop advances cursor for empty deltas only", async () => {
         transcriptPath: transcript,
         sessionId: "s1",
         mode: "auto" as const,
+        everyNTurns: 2,
     };
 
     await capture(client as unknown as Crosmos, opts);
     appendFileSync(transcript, `${event("user_message", "plain four word update")}\n`);
-    await capture(client as unknown as Crosmos, opts);
+    await capture(client as unknown as Crosmos, opts); // 1 meaningful turn < N: no ingest
     appendFileSync(transcript, `${event("agent_message", "another plain word update")}\n`);
-    await capture(client as unknown as Crosmos, opts);
+    await capture(client as unknown as Crosmos, opts); // 2 meaningful turns >= N: ingest
 
     assert.equal(client.ingests.length, 1);
     assert.deepEqual(
@@ -68,10 +70,10 @@ test("Stop advances cursor for empty deltas only", async () => {
     );
 });
 
-test("Stop captures meaningful deltas once", async () => {
+test("Stop does not re-capture a batch on a later empty delta", async () => {
     const transcript = writeTranscript([
-        event("user_message", "Remember that the settings page is overdue"),
-        event("agent_message", "We decided to finish the settings endpoint first"),
+        event("user_message", "first plain four word update"),
+        event("agent_message", "second plain four word update"),
     ]);
     const client = fakeClient();
     const opts = {
@@ -79,24 +81,19 @@ test("Stop captures meaningful deltas once", async () => {
         transcriptPath: transcript,
         sessionId: "s1",
         mode: "auto" as const,
+        everyNTurns: 2,
     };
 
     await capture(client as unknown as Crosmos, opts);
     await capture(client as unknown as Crosmos, opts);
 
     assert.equal(client.ingests.length, 1);
-    assert.deepEqual(
-        client.ingests[0].messages.map((m: { content: string }) => m.content),
-        [
-            "Remember that the settings page is overdue",
-            "We decided to finish the settings endpoint first",
-        ]
-    );
+    assert.equal(client.ingests[0].messages.length, 2);
 });
 
-test("PreCompact captures one meaningful uncaptured turn", async () => {
+test("PreCompact flushes pending turns below the N threshold", async () => {
     const transcript = writeTranscript([
-        event("user_message", "Architecture decision is to keep SDK direct"),
+        event("user_message", "a single plain four word turn"),
     ]);
     const client = fakeClient();
 
@@ -105,6 +102,7 @@ test("PreCompact captures one meaningful uncaptured turn", async () => {
         transcriptPath: transcript,
         sessionId: "s1",
         mode: "auto",
+        everyNTurns: 3,
     });
 
     assert.equal(client.ingests.length, 1);
@@ -113,8 +111,8 @@ test("PreCompact captures one meaningful uncaptured turn", async () => {
 
 test("capture mode off skips ingestion", async () => {
     const transcript = writeTranscript([
-        event("user_message", "Remember that the settings page is overdue"),
-        event("agent_message", "We decided to finish the settings endpoint first"),
+        event("user_message", "plain four word update one"),
+        event("agent_message", "plain four word update two"),
     ]);
     const client = fakeClient();
 
@@ -123,30 +121,24 @@ test("capture mode off skips ingestion", async () => {
         transcriptPath: transcript,
         sessionId: "s1",
         mode: "off",
+        everyNTurns: 1,
     });
 
     assert.equal(client.ingests.length, 0);
 });
 
-test("capture threshold is conservative for Stop and aggressive for PreCompact", () => {
-    const meaningful = [{ role: "user" as const, content: "Architecture decision changed today" }];
-    assert.equal(shouldCaptureDelta("Stop", meaningful, meaningful), true);
-    assert.equal(
-        shouldCaptureDelta(
-            "Stop",
-            [{ role: "user" as const, content: "plain four word update" }],
-            meaningful
-        ),
-        false
-    );
-    assert.equal(
-        shouldCaptureDelta(
-            "PreCompact",
-            [{ role: "user" as const, content: "plain four word update" }],
-            meaningful
-        ),
-        true
-    );
+test("shouldCaptureDelta batches Stop by turn count and always flushes PreCompact", () => {
+    const one = [{ role: "user" as const, content: "plain four word update" }];
+    const two = [
+        { role: "user" as const, content: "plain four word update" },
+        { role: "assistant" as const, content: "another plain word update" },
+    ];
+
+    assert.equal(shouldCaptureDelta("Stop", [], 2), false);
+    assert.equal(shouldCaptureDelta("Stop", one, 2), false);
+    assert.equal(shouldCaptureDelta("Stop", two, 2), true);
+    assert.equal(shouldCaptureDelta("PreCompact", one, 3), true);
+    assert.equal(shouldCaptureDelta("PreCompact", [], 3), false);
 });
 
 interface FakeCaptureClient {
