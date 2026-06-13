@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { parseTranscript } from "../src/codex/transcript.js";
+import { parseTranscript, parseTranscriptEntries } from "../src/codex/transcript.js";
 
 const fixture = fileURLToPath(new URL("./fixtures/rollout.jsonl", import.meta.url));
 
@@ -30,4 +30,12 @@ test("redacts secrets in captured turns", () => {
 
 test("returns empty for a missing file", () => {
     assert.deepEqual(parseTranscript("/no/such/file.jsonl"), []);
+});
+
+test("indexed transcript entries preserve rollout line numbers", () => {
+    const turns = parseTranscriptEntries(fixture);
+    assert.deepEqual(
+        turns.map((t) => t.line),
+        [4, 6, 9]
+    );
 });

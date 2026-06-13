@@ -6,12 +6,20 @@ export interface Turn {
     content: string;
 }
 
+export interface IndexedTurn extends Turn {
+    line: number;
+}
+
 const MAX_CHARS = 1600;
 const MAX_TURNS = 40;
 
 // Parses codex rollout JSONL: user/assistant text lives in event_msg payloads
 // (user_message / agent_message), each with payload.message as a string.
 export function parseTranscript(path: string): Turn[] {
+    return parseTranscriptEntries(path).map(({ role, content }) => ({ role, content }));
+}
+
+export function parseTranscriptEntries(path: string): IndexedTurn[] {
     let lines: string[];
     try {
         lines = readFileSync(path, "utf8").split("\n");
@@ -19,8 +27,8 @@ export function parseTranscript(path: string): Turn[] {
         return [];
     }
 
-    const turns: Turn[] = [];
-    for (const line of lines) {
+    const turns: IndexedTurn[] = [];
+    for (const [i, line] of lines.entries()) {
         if (!line.trim()) continue;
         let entry: { type?: string; payload?: { type?: string; message?: unknown } };
         try {
@@ -32,9 +40,10 @@ export function parseTranscript(path: string): Turn[] {
         const p = entry.payload;
         const text = typeof p?.message === "string" ? p.message.trim() : "";
         if (!text) continue;
-        if (p?.type === "user_message") turns.push({ role: "user", content: clean(text) });
+        if (p?.type === "user_message")
+            turns.push({ line: i + 1, role: "user", content: clean(text) });
         else if (p?.type === "agent_message")
-            turns.push({ role: "assistant", content: clean(text) });
+            turns.push({ line: i + 1, role: "assistant", content: clean(text) });
     }
     return turns.slice(-MAX_TURNS);
 }

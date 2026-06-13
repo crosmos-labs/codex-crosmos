@@ -11,9 +11,9 @@ export interface Action {
 }
 
 const TIMEOUTS: Record<string, number> = {
-    [EVENTS.userPromptSubmit]: 8,
-    [EVENTS.stop]: 15,
-    [EVENTS.preCompact]: 15,
+    [EVENTS.userPromptSubmit]: 35,
+    [EVENTS.stop]: 10,
+    [EVENTS.preCompact]: 10,
 };
 
 function hooksJsonPath() {

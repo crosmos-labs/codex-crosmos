@@ -5,6 +5,8 @@ export const configSchema = z.object({
     spaceName: z.string().optional(),
     baseUrl: z.string().optional(),
     recallLimit: z.number().int().positive().default(5),
+    recallMode: z.enum(["auto", "always", "off"]).default("auto"),
+    captureMode: z.enum(["auto", "off"]).default("auto"),
     debug: z.boolean().default(false),
 });
 

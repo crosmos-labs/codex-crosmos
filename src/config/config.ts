@@ -37,6 +37,16 @@ export function loadConfig(): Config {
         const n = Number(process.env.CROSMOS_RECALL_LIMIT);
         if (Number.isFinite(n) && n > 0) cfg.recallLimit = Math.floor(n);
     }
+    if (
+        process.env.CROSMOS_RECALL_MODE === "auto" ||
+        process.env.CROSMOS_RECALL_MODE === "always" ||
+        process.env.CROSMOS_RECALL_MODE === "off"
+    ) {
+        cfg.recallMode = process.env.CROSMOS_RECALL_MODE;
+    }
+    if (process.env.CROSMOS_CAPTURE_MODE === "auto" || process.env.CROSMOS_CAPTURE_MODE === "off") {
+        cfg.captureMode = process.env.CROSMOS_CAPTURE_MODE;
+    }
     if (process.env.CROSMOS_DEBUG) {
         cfg.debug = process.env.CROSMOS_DEBUG !== "0" && process.env.CROSMOS_DEBUG !== "false";
     }

@@ -5,7 +5,14 @@ import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { configPath, loadConfig, saveConfig } from "../src/config/config.js";
 
-const ENV_KEYS = ["CODEX_HOME", "CROSMOS_SPACE_ID", "CROSMOS_RECALL_LIMIT", "CROSMOS_DEBUG"];
+const ENV_KEYS = [
+    "CODEX_HOME",
+    "CROSMOS_SPACE_ID",
+    "CROSMOS_RECALL_LIMIT",
+    "CROSMOS_RECALL_MODE",
+    "CROSMOS_CAPTURE_MODE",
+    "CROSMOS_DEBUG",
+];
 let saved: Record<string, string | undefined>;
 
 beforeEach(() => {
@@ -25,23 +32,39 @@ afterEach(() => {
 test("defaults when no file exists", () => {
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 5);
+    assert.equal(cfg.recallMode, "auto");
+    assert.equal(cfg.captureMode, "auto");
     assert.equal(cfg.debug, false);
 });
 
 test("reads values from the config file", () => {
-    writeFileSync(configPath(), JSON.stringify({ recallLimit: 9, spaceId: "from-file" }));
+    writeFileSync(
+        configPath(),
+        JSON.stringify({
+            recallLimit: 9,
+            recallMode: "always",
+            captureMode: "off",
+            spaceId: "from-file",
+        })
+    );
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 9);
+    assert.equal(cfg.recallMode, "always");
+    assert.equal(cfg.captureMode, "off");
     assert.equal(cfg.spaceId, "from-file");
 });
 
 test("env overrides file", () => {
     writeFileSync(configPath(), JSON.stringify({ recallLimit: 9, spaceId: "from-file" }));
     process.env.CROSMOS_RECALL_LIMIT = "3";
+    process.env.CROSMOS_RECALL_MODE = "off";
+    process.env.CROSMOS_CAPTURE_MODE = "off";
     process.env.CROSMOS_SPACE_ID = "from-env";
     process.env.CROSMOS_DEBUG = "1";
     const cfg = loadConfig();
     assert.equal(cfg.recallLimit, 3);
+    assert.equal(cfg.recallMode, "off");
+    assert.equal(cfg.captureMode, "off");
     assert.equal(cfg.spaceId, "from-env");
     assert.equal(cfg.debug, true);
 });

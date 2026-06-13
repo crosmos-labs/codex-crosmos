@@ -26,11 +26,14 @@ export async function runHook(
     event: HookEvent,
     fn: (payload: HookPayload) => Promise<void>
 ): Promise<void> {
+    const start = Date.now();
     const payload = readPayload();
     try {
         await fn(payload);
     } catch (err) {
         log("hook error", event, String(err));
+    } finally {
+        log("hook", event, `duration_ms=${Date.now() - start}`);
     }
     process.exit(0);
 }

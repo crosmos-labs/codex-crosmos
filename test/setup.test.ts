@@ -34,6 +34,12 @@ test("fresh install wires hooks, bundle, skill — and never touches config.toml
 
     const hooks = JSON.parse(readFileSync(hooksJson(), "utf8")).hooks;
     assert.deepEqual(Object.keys(hooks).sort(), ["PreCompact", "Stop", "UserPromptSubmit"]);
+    assert.equal(hooks.UserPromptSubmit[0].hooks[0].timeout, 35);
+    assert.equal(hooks.Stop[0].hooks[0].timeout, 10);
+    assert.equal(hooks.PreCompact[0].hooks[0].timeout, 10);
+    assert.equal(hooks.UserPromptSubmit[0].hooks[0].statusMessage, "recalling crosmos memory");
+    assert.equal(hooks.Stop[0].hooks[0].statusMessage, "saving to crosmos");
+    assert.equal(hooks.PreCompact[0].hooks[0].statusMessage, "saving to crosmos");
 
     // config.toml is left byte-for-byte unchanged
     assert.equal(readFileSync(join(home, "config.toml"), "utf8"), 'model = "x"\n');
