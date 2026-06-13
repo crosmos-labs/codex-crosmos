@@ -1,17 +1,22 @@
-import { copyFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
 import { getApiKey, saveApiKey } from "../client/credentials.js";
 import { createClient } from "../client/crosmos.js";
-import { EVENTS } from "../codex/events.js";
-import { assertWritable, installHooks } from "../codex/hooks-config.js";
-import { writeSkill } from "../codex/skill.js";
-import { pluginDir } from "../lib/paths.js";
+import { assertWritable, runInstall } from "../codex/setup.js";
+import { codexHome, isDefaultCodexHome } from "../lib/paths.js";
 import { resolveSpaceId } from "../memory/space.js";
 
-export async function install(): Promise<void> {
+export async function install(args: string[]): Promise<void> {
     p.intro("crosmos · codex");
+
+    if (!isDefaultCodexHome() && !args.includes("--force")) {
+        p.log.warn(
+            `CODEX_HOME points to ${codexHome()} (not ~/.codex) — install would write there.`
+        );
+        p.log.warn("unset CODEX_HOME, or re-run with --force if that's intended.");
+        p.outro("aborted");
+        process.exit(1);
+    }
 
     let apiKey = getApiKey();
     if (!apiKey) {
@@ -36,21 +41,18 @@ export async function install(): Promise<void> {
         s.stop("no api key");
         process.exit(1);
     }
-    let spaceId: string | null;
     try {
-        spaceId = await resolveSpaceId(client);
+        if (!(await resolveSpaceId(client))) {
+            s.stop("no memory space found — create one in the crosmos console first");
+            process.exit(1);
+        }
     } catch (err) {
         s.stop("could not reach crosmos");
         p.log.error(String(err));
         process.exit(1);
     }
-    if (!spaceId) {
-        s.stop("no memory space found — create one in the crosmos console first");
-        process.exit(1);
-    }
     s.stop("connected");
 
-    // Validate hooks.json before writing anything, so we never clobber a corrupt file.
     try {
         assertWritable();
     } catch (err) {
@@ -58,44 +60,18 @@ export async function install(): Promise<void> {
         process.exit(1);
     }
 
-    const self = fileURLToPath(import.meta.url);
-    const target = join(pluginDir(), "cli.mjs");
-    mkdirSync(pluginDir(), { recursive: true });
-    copyFileSync(self, target);
+    let actions: { path: string; action: string }[];
+    try {
+        actions = runInstall(fileURLToPath(import.meta.url));
+    } catch (err) {
+        p.log.error(`install failed: ${String(err)}`);
+        process.exit(1);
+    }
 
-    const node = process.execPath;
-    const cmd = (event: string) => `"${node}" "${target}" hook ${event}`;
-    installHooks(
-        [
-            {
-                event: EVENTS.userPromptSubmit,
-                command: cmd(EVENTS.userPromptSubmit),
-                commandWindows: cmd(EVENTS.userPromptSubmit),
-                timeout: 8,
-                statusMessage: "recalling crosmos memory",
-            },
-            {
-                event: EVENTS.stop,
-                command: cmd(EVENTS.stop),
-                commandWindows: cmd(EVENTS.stop),
-                timeout: 15,
-                statusMessage: "saving to crosmos",
-            },
-            {
-                event: EVENTS.preCompact,
-                command: cmd(EVENTS.preCompact),
-                commandWindows: cmd(EVENTS.preCompact),
-                timeout: 15,
-                statusMessage: "saving to crosmos",
-            },
-        ],
-        target
-    );
-    writeSkill(target);
-
+    p.note(actions.map((a) => `${a.action}\n  ${a.path}`).join("\n"), "installed");
     p.note(
         "run /hooks in codex to approve, then just use codex normally.\nmemory is recalled and saved automatically.",
-        "done"
+        "next"
     );
     p.outro("crosmos is set up");
 }

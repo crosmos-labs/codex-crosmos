@@ -5,6 +5,10 @@ export function codexHome(): string {
     return process.env.CODEX_HOME || join(homedir(), ".codex");
 }
 
+export function isDefaultCodexHome(): boolean {
+    return codexHome() === join(homedir(), ".codex");
+}
+
 export function pluginDir(): string {
     return join(codexHome(), "crosmos");
 }

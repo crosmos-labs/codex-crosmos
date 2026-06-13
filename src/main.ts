@@ -10,7 +10,7 @@ async function main(): Promise<void> {
         case "hook":
             return runHookCommand(rest);
         case "install":
-            return install();
+            return install(rest);
         case "uninstall":
             return uninstall();
         case "status":

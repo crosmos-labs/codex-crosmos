@@ -36,6 +36,7 @@
     ],
     "dependencies": {
         "@clack/prompts": "^1.5.1",
+        "@iarna/toml": "^2.2.5",
         "crosmos": "^0.1.0",
         "zod": "^4.4.3"
     },

@@ -41,11 +41,15 @@ echo '{"prompt":"a recall smoke test prompt"}' | node dist/cli.mjs hook UserProm
 
 ## test in a real codex session
 
-this installs into your real `~/.codex` so codex actually loads it.
+this installs into your real `~/.codex` so codex actually loads it. **first unset any `CODEX_HOME`**
+left over from the throwaway-home steps above, or the install would write there instead (it now warns
+and refuses unless you pass `--force`):
 
 ```sh
+unset CODEX_HOME                 # fish: set -e CODEX_HOME
 npm run build
-node dist/cli.mjs install        # uses your real ~/.codex (no CODEX_HOME override)
+node dist/cli.mjs install        # writes to ~/.codex; prints every path it touched
+node dist/cli.mjs status         # confirm flag + hooks + bundle + skill
 ```
 
 then, in codex:
