@@ -6,10 +6,8 @@
 
 <p><em>automatic, persistent context for the openai codex cli, powered by crosmos.</em></p>
 
-<p>
-  <a href="https://www.npmjs.com/package/@crosmos/codex"><img src="https://img.shields.io/npm/v/@crosmos/codex?style=for-the-badge&color=000000" alt="npm version" /></a>
-  <img src="https://img.shields.io/npm/l/@crosmos/codex?style=for-the-badge&color=000000" alt="license: MIT" />
-</p>
+[![npm version](https://img.shields.io/npm/v/@crosmos/codex?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@crosmos/codex)
+<!--[![license](https://img.shields.io/npm/l/@crosmos/codex?style=for-the-badge)](./LICENSE)-->
 
 </div>
 
