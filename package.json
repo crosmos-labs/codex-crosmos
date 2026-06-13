@@ -6,8 +6,6 @@
         "type": "git",
         "url": "git+https://github.com/crosmos-labs/codex-crosmos.git"
     },
-    "homepage": "https://github.com/crosmos-labs/codex-crosmos#readme",
-    "bugs": "https://github.com/crosmos-labs/codex-crosmos/issues",
     "scripts": {
         "test": "node --import tsx --test test/*.test.ts",
         "build": "node build.mjs",
