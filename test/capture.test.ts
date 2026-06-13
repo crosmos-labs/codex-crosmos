@@ -36,7 +36,6 @@ test("Stop skips trivial deltas", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        mode: "auto",
         everyNTurns: 1,
     });
 
@@ -53,7 +52,6 @@ test("Stop waits for N meaningful turns, then captures the batch once", async ()
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        mode: "auto" as const,
         everyNTurns: 2,
     };
 
@@ -80,7 +78,6 @@ test("Stop does not re-capture a batch on a later empty delta", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        mode: "auto" as const,
         everyNTurns: 2,
     };
 
@@ -101,7 +98,6 @@ test("PreCompact flushes pending turns below the N threshold", async () => {
         event: "PreCompact",
         transcriptPath: transcript,
         sessionId: "s1",
-        mode: "auto",
         everyNTurns: 3,
     });
 
@@ -109,7 +105,7 @@ test("PreCompact flushes pending turns below the N threshold", async () => {
     assert.equal(client.ingests[0].messages.length, 1);
 });
 
-test("capture mode off skips ingestion", async () => {
+test("everyNTurns 0 disables capture", async () => {
     const transcript = writeTranscript([
         event("user_message", "plain four word update one"),
         event("agent_message", "plain four word update two"),
@@ -120,8 +116,7 @@ test("capture mode off skips ingestion", async () => {
         event: "Stop",
         transcriptPath: transcript,
         sessionId: "s1",
-        mode: "off",
-        everyNTurns: 1,
+        everyNTurns: 0,
     });
 
     assert.equal(client.ingests.length, 0);

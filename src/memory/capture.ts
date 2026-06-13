@@ -1,7 +1,6 @@
 import { basename } from "node:path";
 import type Crosmos from "crosmos";
 import { parseTranscriptEntries, type Turn } from "../codex/transcript.js";
-import type { Config } from "../config/schema.js";
 import { log } from "../lib/logger.js";
 import { resolveSpaceId } from "./space.js";
 import { loadSessionState, saveSessionState, sessionKey } from "./state.js";
@@ -14,12 +13,11 @@ export async function capture(
         cwd?: string;
         branch?: string;
         sessionId?: string;
-        mode: Config["captureMode"];
         everyNTurns: number;
     }
 ): Promise<void> {
-    if (opts.mode === "off") {
-        log("hook", opts.event, "capture skipped reason=mode_off");
+    if (opts.everyNTurns === 0) {
+        log("hook", opts.event, "capture skipped reason=disabled");
         return;
     }
     const entries = opts.transcriptPath ? parseTranscriptEntries(opts.transcriptPath) : [];

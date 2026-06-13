@@ -43,8 +43,8 @@ export async function runHookCommand(args: string[]): Promise<void> {
     if (event === EVENTS.stop || event === EVENTS.preCompact) {
         await runHook(event, async (payload) => {
             initLogger(cfg.debug, payload.session_id);
-            if (cfg.captureMode === "off") {
-                log("hook", event, "capture skipped reason=mode_off");
+            if (cfg.captureEveryNTurns === 0) {
+                log("hook", event, "capture skipped reason=disabled");
                 return;
             }
             const client = createClient(CAPTURE_TIMEOUT);
@@ -58,7 +58,6 @@ export async function runHookCommand(args: string[]): Promise<void> {
                 cwd: payload.cwd,
                 branch: gitBranch(payload.cwd),
                 sessionId: payload.session_id,
-                mode: cfg.captureMode,
                 everyNTurns: cfg.captureEveryNTurns,
             });
         });
