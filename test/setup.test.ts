@@ -22,48 +22,28 @@ afterEach(() => {
     else process.env.CODEX_HOME = prevHome;
 });
 
-const configToml = () => join(home, "config.toml");
 const hooksJson = () => join(home, "hooks.json");
 
-test("fresh install wires config flag, hooks, bundle, and skill", () => {
+test("fresh install wires hooks, bundle, skill — and never touches config.toml", () => {
+    writeFileSync(join(home, "config.toml"), 'model = "x"\n');
     runInstall(bundle);
     const i = inspect();
-    assert.equal(i.hooksFlag, true);
     assert.equal(i.hooksRegistered, true);
     assert.equal(i.bundlePresent, true);
     assert.equal(i.skillPresent, true);
 
-    const toml = readFileSync(configToml(), "utf8");
-    assert.match(toml, /hooks = true/);
-
     const hooks = JSON.parse(readFileSync(hooksJson(), "utf8")).hooks;
     assert.deepEqual(Object.keys(hooks).sort(), ["PreCompact", "Stop", "UserPromptSubmit"]);
+
+    // config.toml is left byte-for-byte unchanged
+    assert.equal(readFileSync(join(home, "config.toml"), "utf8"), 'model = "x"\n');
 });
 
-test("config.toml: preserves existing keys and only adds the flag", () => {
-    writeFileSync(configToml(), 'model = "gpt-5.5"\n');
-    runInstall(bundle);
-    const toml = readFileSync(configToml(), "utf8");
-    assert.match(toml, /model = "gpt-5\.5"/);
-    assert.match(toml, /hooks = true/);
-    assert.ok(existsSync(`${configToml()}.bak`));
-});
-
-test("config.toml: idempotent when hooks already enabled (incl. legacy key)", () => {
-    writeFileSync(configToml(), 'model = "x"\n[features]\ncodex_hooks = true\n');
-    runInstall(bundle);
-    const toml = readFileSync(configToml(), "utf8");
-    // legacy flag already enables hooks, so we must not add our own key
-    assert.doesNotMatch(toml, /\bhooks = true/);
-    assert.match(toml, /codex_hooks = true/);
-});
-
-test("aborts (no write) on corrupt config.toml or hooks.json", () => {
-    writeFileSync(configToml(), "this = = not toml");
-    assert.throws(() => assertWritable());
-    writeFileSync(configToml(), 'model = "x"\n');
+test("aborts (writes nothing) on a corrupt hooks.json", () => {
     writeFileSync(hooksJson(), "{ broken");
     assert.throws(() => assertWritable());
+    assert.throws(() => runInstall(bundle));
+    assert.equal(readFileSync(hooksJson(), "utf8"), "{ broken");
 });
 
 test("preserves foreign hooks", () => {
@@ -77,20 +57,18 @@ test("preserves foreign hooks", () => {
     assert.match(readFileSync(hooksJson(), "utf8"), /node other\.js/);
 });
 
-test("uninstall fully reverts a fresh install", () => {
+test("reinstall is idempotent", () => {
     runInstall(bundle);
-    const actions = runUninstall();
-    assert.ok(actions.length > 0);
-    const i = inspect();
-    assert.equal(i.hooksRegistered, false);
-    assert.equal(i.bundlePresent, false);
-    assert.equal(i.skillPresent, false);
-    assert.equal(i.hooksFlag, false);
-    assert.equal(existsSync(join(home, "crosmos.json")), false);
+    runInstall(bundle);
+    const hooks = JSON.parse(readFileSync(hooksJson(), "utf8")).hooks;
+    const count = hooks.UserPromptSubmit.reduce(
+        (n: number, g: { hooks: unknown[] }) => n + g.hooks.length,
+        0
+    );
+    assert.equal(count, 1);
 });
 
-test("uninstall keeps foreign hooks and a flag it did not set", () => {
-    writeFileSync(configToml(), "[features]\ncodex_hooks = true\n");
+test("uninstall reverts a fresh install and keeps foreign hooks", () => {
     writeFileSync(
         hooksJson(),
         JSON.stringify({
@@ -99,10 +77,27 @@ test("uninstall keeps foreign hooks and a flag it did not set", () => {
     );
     runInstall(bundle);
     runUninstall();
+    const i = inspect();
+    assert.equal(i.hooksRegistered, false);
+    assert.equal(i.bundlePresent, false);
+    assert.equal(i.skillPresent, false);
     assert.match(readFileSync(hooksJson(), "utf8"), /node other\.js/);
-    assert.match(readFileSync(configToml(), "utf8"), /codex_hooks = true/);
 });
 
 test("uninstall is safe when nothing is installed", () => {
     assert.deepEqual(runUninstall(), []);
+});
+
+test("inspect flags an explicit hooks = false opt-out", () => {
+    writeFileSync(join(home, "config.toml"), "[features]\nhooks = false\n");
+    assert.equal(inspect().hooksDisabled, true);
+    writeFileSync(join(home, "config.toml"), "[features]\nhooks = true\n");
+    assert.equal(inspect().hooksDisabled, false);
+});
+
+test("uninstall removes crosmos.json when present", () => {
+    writeFileSync(join(home, "crosmos.json"), '{"recallLimit":5}\n');
+    runInstall(bundle);
+    runUninstall();
+    assert.equal(existsSync(join(home, "crosmos.json")), false);
 });

@@ -1,7 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { parse, stringify } from "smol-toml";
-import { loadConfig, removeConfig, saveConfig } from "../config/config.js";
+import { removeConfig } from "../config/config.js";
 import { backup, writeFileAtomic } from "../lib/fsx.js";
 import { codexHome, pluginDir, skillsDir } from "../lib/paths.js";
 import { EVENTS } from "./events.js";
@@ -17,9 +16,6 @@ const TIMEOUTS: Record<string, number> = {
     [EVENTS.preCompact]: 15,
 };
 
-function configTomlPath() {
-    return join(codexHome(), "config.toml");
-}
 function hooksJsonPath() {
     return join(codexHome(), "hooks.json");
 }
@@ -30,47 +26,7 @@ function skillFile() {
     return join(skillsDir(), "crosmos-save", "SKILL.md");
 }
 
-// --- config.toml feature flag ---
-
-function readToml(): Record<string, unknown> {
-    if (!existsSync(configTomlPath())) return {};
-    try {
-        return parse(readFileSync(configTomlPath(), "utf8"));
-    } catch {
-        throw new Error(`${configTomlPath()} is not valid TOML — refusing to modify it.`);
-    }
-}
-
-function hooksEnabled(cfg: Record<string, unknown>): boolean {
-    const features = cfg.features as Record<string, unknown> | undefined;
-    return features?.hooks === true || features?.codex_hooks === true;
-}
-
-// Returns true only if it actually had to enable the flag.
-function ensureHooksEnabled(): boolean {
-    const cfg = readToml();
-    if (hooksEnabled(cfg)) return false;
-    const features = (cfg.features as Record<string, unknown>) ?? {};
-    features.hooks = true;
-    cfg.features = features;
-    mkdirSync(codexHome(), { recursive: true });
-    backup(configTomlPath());
-    writeFileAtomic(configTomlPath(), stringify(cfg));
-    return true;
-}
-
-function disableHooksFlag(): boolean {
-    const cfg = readToml();
-    const features = cfg.features as Record<string, unknown> | undefined;
-    if (features?.hooks !== true) return false;
-    delete features.hooks;
-    if (Object.keys(features).length === 0) delete cfg.features;
-    backup(configTomlPath());
-    writeFileAtomic(configTomlPath(), stringify(cfg));
-    return true;
-}
-
-// --- hooks.json ---
+// Codex enables the `hooks` feature by default, so we never touch config.toml.
 
 interface HookCommand {
     type: "command";
@@ -150,8 +106,6 @@ function uninstallHooks(marker: string): number {
     return removed;
 }
 
-// --- skill ---
-
 function writeSkill(cliPath: string): void {
     mkdirSync(join(skillsDir(), "crosmos-save"), { recursive: true });
     writeFileAtomic(
@@ -170,24 +124,14 @@ Pass a clear, self-contained summary. crosmos handles storage and recall automat
     );
 }
 
-// --- public API ---
-
-// Throws (writing nothing) if config.toml or hooks.json is present-but-corrupt.
+// Throws (writing nothing) if hooks.json is present-but-corrupt.
 export function assertWritable(): void {
-    readToml();
     readHooks();
 }
 
 export function runInstall(bundleSource: string): Action[] {
     const actions: Action[] = [];
     const target = bundlePath();
-
-    if (ensureHooksEnabled()) {
-        saveConfig({ setHooksFlag: true });
-        actions.push({ path: configTomlPath(), action: "enabled [features] hooks in" });
-    } else {
-        actions.push({ path: configTomlPath(), action: "left unchanged (hooks already enabled):" });
-    }
 
     mkdirSync(pluginDir(), { recursive: true });
     copyFileSync(bundleSource, target);
@@ -229,9 +173,6 @@ export function runUninstall(): Action[] {
         rmSync(pluginDir(), { recursive: true, force: true });
         actions.push({ path: pluginDir(), action: "deleted bundle dir" });
     }
-    if (loadConfig().setHooksFlag && disableHooksFlag()) {
-        actions.push({ path: configTomlPath(), action: "disabled [features] hooks in" });
-    }
     if (removeConfig())
         actions.push({ path: join(codexHome(), "crosmos.json"), action: "deleted" });
 
@@ -239,25 +180,28 @@ export function runUninstall(): Action[] {
 }
 
 export interface Inspection {
-    hooksFlag: boolean;
     hooksRegistered: boolean;
     bundlePresent: boolean;
     skillPresent: boolean;
+    hooksDisabled: boolean;
 }
 
 export function inspect(): Inspection {
-    let hooksFlag = false;
-    try {
-        hooksFlag = hooksEnabled(readToml());
-    } catch {}
     let hooksRegistered = false;
     try {
         hooksRegistered = readFileSync(hooksJsonPath(), "utf8").includes(bundlePath());
     } catch {}
+    // Cheap, parser-free check: warn only if hooks were explicitly turned off.
+    let hooksDisabled = false;
+    try {
+        hooksDisabled = /hooks\s*=\s*false/.test(
+            readFileSync(join(codexHome(), "config.toml"), "utf8")
+        );
+    } catch {}
     return {
-        hooksFlag,
         hooksRegistered,
         bundlePresent: existsSync(bundlePath()),
         skillPresent: existsSync(skillFile()),
+        hooksDisabled,
     };
 }

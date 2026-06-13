@@ -37,7 +37,6 @@
     "dependencies": {
         "@clack/prompts": "^1.5.1",
         "crosmos": "^0.1.0",
-        "smol-toml": "^1.6.1",
         "zod": "^4.4.3"
     },
     "devDependencies": {

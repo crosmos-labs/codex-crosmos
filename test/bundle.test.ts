@@ -51,7 +51,7 @@ test("built bundle completes an offline install", { skip: !existsSync(bundle) },
         },
     });
     assert.equal(res.status, 0, res.stderr);
-    assert.match(readFileSync(join(home, "config.toml"), "utf8"), /hooks = true/);
+    assert.equal(readFileSync(join(home, "config.toml"), "utf8"), 'model = "x"\n'); // untouched
     assert.ok(existsSync(join(home, "hooks.json")));
     assert.ok(existsSync(join(home, "crosmos", "cli.mjs")));
 });

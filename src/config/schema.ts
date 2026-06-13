@@ -6,7 +6,6 @@ export const configSchema = z.object({
     baseUrl: z.string().optional(),
     recallLimit: z.number().int().positive().default(5),
     debug: z.boolean().default(false),
-    setHooksFlag: z.boolean().optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;

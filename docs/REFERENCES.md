@@ -39,10 +39,12 @@ release; update the date when you do.
 
 ## Verified Codex facts (2026-06-13)
 
-- **Hooks feature flag:** `[features] hooks` — **enabled by default** (the old `features.codex_hooks` is the
-  deprecated legacy key, still recognized). We set `[features] hooks = true` **defensively on install,
-  only when neither key is already enabled** (back up + atomic write), and remove it on uninstall only if
-  we added it. A standalone `~/.codex/hooks.json` is what Codex runs; both still require `/hooks` approval.
+- **Hooks feature flag:** `[features] hooks` is **enabled by default** (confirmed: docs feature-flags
+  table + the `default_enabled: true` FeatureSpec model; precedence is cloud > `--enable` > config.toml >
+  runtime > code-default). So a flag is **not required** — **we never edit `config.toml`.** The old
+  `features.codex_hooks` is a deprecated legacy alias (Codex warns on it; not ours). A standalone
+  `~/.codex/hooks.json` is what Codex runs; it still requires `/hooks` approval. Only an explicit
+  `hooks = false` disables hooks — `status` warns about that via a parser-free substring check.
 - **Hook events:** `SessionStart`, `SubagentStart`, `PreToolUse`, `PermissionRequest`, `PostToolUse`,
   `PreCompact`, `PostCompact`, `UserPromptSubmit`, `SubagentStop`, `Stop`.
 - **PreToolUse supports allow/deny + input rewrite** (`permissionDecision: allow|deny`, `updatedInput`).

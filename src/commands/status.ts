@@ -13,7 +13,6 @@ export async function status(): Promise<void> {
     const lines = [
         `api key:          ${key ? `found (${key.slice(0, 8)}…)` : "missing"}`,
         `base url:         ${getBaseUrl()}`,
-        `hooks flag:       ${i.hooksFlag ? "enabled" : "off"}`,
         `hooks registered: ${i.hooksRegistered ? "yes" : "no"}`,
         `bundle installed: ${i.bundlePresent ? "yes" : "no"}`,
         `skill installed:  ${i.skillPresent ? "yes" : "no"}`,
@@ -32,7 +31,11 @@ export async function status(): Promise<void> {
     }
 
     p.note(lines.join("\n"), "status");
-    if (i.bundlePresent && i.hooksRegistered) {
+    if (i.hooksDisabled) {
+        p.log.warn(
+            "[features] hooks = false in config.toml disables all hooks — remove it to use crosmos."
+        );
+    } else if (i.bundlePresent && i.hooksRegistered) {
         p.log.info("if recall/capture isn't running, run /hooks in codex to approve the hooks.");
     } else if (i.bundlePresent) {
         p.log.warn("hooks not fully registered — re-run install.");
