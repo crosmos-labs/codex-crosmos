@@ -26,6 +26,10 @@
     "bin": {
         "crosmos-codex": "dist/cli.mjs"
     },
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
     "engines": {
         "node": ">=18"
     },

@@ -1,0 +1,25 @@
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write   # OIDC trusted publishing — no NPM token secret needed
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g npm@latest   # ensure npm >= 11.5 for OIDC trusted publishing
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - run: npm publish                 # access + provenance come from publishConfig
