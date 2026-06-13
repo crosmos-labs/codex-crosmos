@@ -109,7 +109,7 @@ function withoutMarker(groups: HookGroup[], marker: string): HookGroup[] {
         .filter((g) => g.hooks.length > 0);
 }
 
-function installHooks(marker: string): void {
+function installHooks(marker: string): number {
     const data = readHooks();
     data.hooks ??= {};
     for (const event of Object.values(EVENTS)) {
@@ -132,6 +132,7 @@ function installHooks(marker: string): void {
         data.hooks[event] = kept;
     }
     writeHooks(data);
+    return Object.values(EVENTS).length;
 }
 
 function uninstallHooks(marker: string): number {
@@ -183,20 +184,23 @@ export function runInstall(bundleSource: string): Action[] {
 
     if (ensureHooksEnabled()) {
         saveConfig({ setHooksFlag: true });
-        actions.push({ path: configTomlPath(), action: "enabled [features] hooks" });
+        actions.push({ path: configTomlPath(), action: "enabled [features] hooks in" });
     } else {
-        actions.push({ path: configTomlPath(), action: "hooks already enabled" });
+        actions.push({ path: configTomlPath(), action: "left unchanged (hooks already enabled):" });
     }
 
     mkdirSync(pluginDir(), { recursive: true });
     copyFileSync(bundleSource, target);
-    actions.push({ path: target, action: "copied bundle" });
+    actions.push({ path: target, action: "copied bundle to" });
 
-    installHooks(target);
-    actions.push({ path: hooksJsonPath(), action: "registered 3 hooks" });
+    const added = installHooks(target);
+    actions.push({
+        path: hooksJsonPath(),
+        action: `added ${added} hook ${added === 1 ? "entry" : "entries"} to`,
+    });
 
     writeSkill(target);
-    actions.push({ path: skillFile(), action: "wrote skill" });
+    actions.push({ path: skillFile(), action: "wrote skill to" });
 
     return actions;
 }
@@ -206,25 +210,30 @@ export function runUninstall(): Action[] {
     const target = bundlePath();
 
     try {
-        if (uninstallHooks(target) > 0)
-            actions.push({ path: hooksJsonPath(), action: "removed hooks" });
+        const n = uninstallHooks(target);
+        if (n > 0)
+            actions.push({
+                path: hooksJsonPath(),
+                action: `removed ${n} hook ${n === 1 ? "entry" : "entries"} from`,
+            });
     } catch (err) {
-        actions.push({ path: hooksJsonPath(), action: `left untouched — ${String(err)}` });
+        actions.push({ path: hooksJsonPath(), action: `left untouched (${String(err)}):` });
     }
 
-    if (existsSync(skillFile())) {
-        rmSync(join(skillsDir(), "crosmos-save"), { recursive: true, force: true });
-        actions.push({ path: skillFile(), action: "removed skill" });
+    const skillDir = join(skillsDir(), "crosmos-save");
+    if (existsSync(skillDir)) {
+        rmSync(skillDir, { recursive: true, force: true });
+        actions.push({ path: skillDir, action: "deleted skill dir" });
     }
     if (existsSync(pluginDir())) {
         rmSync(pluginDir(), { recursive: true, force: true });
-        actions.push({ path: pluginDir(), action: "removed bundle" });
+        actions.push({ path: pluginDir(), action: "deleted bundle dir" });
     }
     if (loadConfig().setHooksFlag && disableHooksFlag()) {
-        actions.push({ path: configTomlPath(), action: "disabled [features] hooks" });
+        actions.push({ path: configTomlPath(), action: "disabled [features] hooks in" });
     }
     if (removeConfig())
-        actions.push({ path: join(codexHome(), "crosmos.json"), action: "removed config" });
+        actions.push({ path: join(codexHome(), "crosmos.json"), action: "deleted" });
 
     return actions;
 }
