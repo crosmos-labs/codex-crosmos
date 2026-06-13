@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import * as TOML from "@iarna/toml";
+import { parse, stringify } from "smol-toml";
 import { loadConfig, removeConfig, saveConfig } from "../config/config.js";
 import { backup, writeFileAtomic } from "../lib/fsx.js";
 import { codexHome, pluginDir, skillsDir } from "../lib/paths.js";
@@ -32,16 +32,16 @@ function skillFile() {
 
 // --- config.toml feature flag ---
 
-function readToml(): TOML.JsonMap {
+function readToml(): Record<string, unknown> {
     if (!existsSync(configTomlPath())) return {};
     try {
-        return TOML.parse(readFileSync(configTomlPath(), "utf8"));
+        return parse(readFileSync(configTomlPath(), "utf8"));
     } catch {
         throw new Error(`${configTomlPath()} is not valid TOML — refusing to modify it.`);
     }
 }
 
-function hooksEnabled(cfg: TOML.JsonMap): boolean {
+function hooksEnabled(cfg: Record<string, unknown>): boolean {
     const features = cfg.features as Record<string, unknown> | undefined;
     return features?.hooks === true || features?.codex_hooks === true;
 }
@@ -50,23 +50,23 @@ function hooksEnabled(cfg: TOML.JsonMap): boolean {
 function ensureHooksEnabled(): boolean {
     const cfg = readToml();
     if (hooksEnabled(cfg)) return false;
-    const features = (cfg.features as TOML.JsonMap) ?? {};
+    const features = (cfg.features as Record<string, unknown>) ?? {};
     features.hooks = true;
     cfg.features = features;
     mkdirSync(codexHome(), { recursive: true });
     backup(configTomlPath());
-    writeFileAtomic(configTomlPath(), TOML.stringify(cfg));
+    writeFileAtomic(configTomlPath(), stringify(cfg));
     return true;
 }
 
 function disableHooksFlag(): boolean {
     const cfg = readToml();
-    const features = cfg.features as TOML.JsonMap | undefined;
+    const features = cfg.features as Record<string, unknown> | undefined;
     if (features?.hooks !== true) return false;
     delete features.hooks;
     if (Object.keys(features).length === 0) delete cfg.features;
     backup(configTomlPath());
-    writeFileAtomic(configTomlPath(), TOML.stringify(cfg));
+    writeFileAtomic(configTomlPath(), stringify(cfg));
     return true;
 }
 
