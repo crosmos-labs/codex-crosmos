@@ -36,6 +36,15 @@ can never block or break a Codex session. `/crosmos-save` is a secondary conveni
 - **Uninstall** reverts only our footprint (hook entries, skill, bundle, `crosmos.json`); leaves the
   crosmos login and server-side memories untouched. Secrets are redacted before anything leaves the machine.
 
+## How to write code here
+
+- **Simplest implementation that works.** Prefer fewer moving parts and fewer dependencies over
+  cleverness. Don't add abstraction, options, or flags speculatively — add them only when a real,
+  present need proves it (the config.toml flag was removed once we proved it wasn't needed).
+- **Expressive code over opaque constants.** Derive or clearly name values instead of scattering
+  unexplained magic numbers/strings; a constant should say what it is and why. Code should read
+  clearly on its own — reach for a short "why" comment only when the intent isn't obvious from it.
+
 ## Toolchain & conventions
 
 - ESM (`"type": "module"`), npm, **esbuild** bundle, **Biome** (4-space, double quotes), `node --test` via `tsx`, `zod`.
