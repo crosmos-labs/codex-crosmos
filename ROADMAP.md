@@ -10,7 +10,7 @@ Primary goal: **simple implementation + ease of access for the user.**
 
 Deliberately minimal — prove the loop end-to-end, then iterate.
 
-- **Distribution:** single npm package, esbuild-bundled. CLI bin `crosmos-codex`
+- **Distribution:** single npm package, esbuild-bundled. CLI bin `codex` (run via `npx @crosmos/codex`)
   with `install` / `uninstall` / `status`. Installs via npx (writes `~/.codex/hooks.json`,
   copies bundled scripts to `~/.codex/crosmos/`, installs skills to `~/.codex/skills/`).
 - **Backend:** SDK-direct in-process (`crosmos` SDK → REST). No MCP in the hot path.
@@ -39,7 +39,7 @@ Deliberately minimal — prove the loop end-to-end, then iterate.
 ### Distribution (deferred from the v0 "npx-installer" decision)
 - [ ] Native Codex marketplace plugin (`plugin.json` + `marketplace.json` + `interface` block).
       Blocked: Codex `plugin/install` API is "under development; not for production clients yet."
-- [ ] Configurable/alternate CLI entrypoint name (v0 hardcodes `crosmos-codex` behind a constant).
+- [ ] Configurable/alternate CLI entrypoint name (v0 hardcodes the `codex` bin name).
 - [ ] Optional `.mcp.json` reference so power users get callable memory tools in-conversation.
 
 ### Scoping (deferred from the v0 "single space" decision — the real blocker)

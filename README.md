@@ -31,10 +31,13 @@ The installer asks for your api key (or reuses `~/.crosmos/credentials.json` if 
 up crosmos before), registers the hooks, and installs the `crosmos-save` skill. Then run
 `/hooks` inside codex once to approve — and you're done.
 
+> Run it with `npx`, not a global install — the package's bin is named `codex`, and a
+> global install would shadow the OpenAI Codex CLI.
+
 ## What the installer writes
 
 No magic. It's a plain script that writes a handful of files you can inspect — and
-`crosmos-codex uninstall` reverts every one of them. Existing files are backed up before
+`npx @crosmos/codex uninstall` reverts every one of them. Existing files are backed up before
 they're touched, and it **never edits `~/.codex/config.toml`**.
 
 | path | what it is |
@@ -69,8 +72,8 @@ unavailable, your codex session is never blocked.
 ## Commands
 
 ```sh
-crosmos-codex status      # show key, space, and hook registration
-crosmos-codex uninstall   # remove hooks + skill (memories are kept)
+npx @crosmos/codex status      # show key, space, and hook registration
+npx @crosmos/codex uninstall   # remove hooks + skill (memories are kept)
 ```
 
 ## Configuration

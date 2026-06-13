@@ -6,7 +6,7 @@ import { resolveSpaceId } from "../memory/space.js";
 export async function save(args: string[]): Promise<void> {
     const text = parseText(args);
     if (!text) {
-        process.stderr.write('usage: crosmos-codex save --text "<note>"\n');
+        process.stderr.write('usage: npx @crosmos/codex save --text "<note>"\n');
         process.exit(1);
     }
 

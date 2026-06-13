@@ -18,7 +18,9 @@ async function main(): Promise<void> {
         case "save":
             return save(rest);
         default:
-            process.stdout.write("usage: crosmos-codex <install | uninstall | status | save>\n");
+            process.stdout.write(
+                "usage: npx @crosmos/codex <install | uninstall | status | save>\n"
+            );
     }
 }
 
