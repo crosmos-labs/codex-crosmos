@@ -1,7 +1,7 @@
 # crosmos-codex — Roadmap
 
 A standalone OpenAI Codex memory plugin for crosmos. Built SDK-direct (the `crosmos`
-TS SDK in-process, esbuild-bundled), inspired by supermemory's codex plugin but not a copy.
+TS SDK in-process, esbuild-bundled).
 Primary goal: **simple implementation + ease of access for the user.**
 
 ---
@@ -30,11 +30,10 @@ Deliberately minimal — prove the loop end-to-end, then iterate.
 
 ## Deferred to v1+ (tracked from v0 decisions)
 
-### Auth (deferred from the v0 "manual key paste" decision)
-- [ ] One-click browser auth (loopback localhost callback → key), supermemory-style.
-- [ ] Ride the existing backend OAuth 2.1 server (PKCE + RFC 7591 dynamic registration).
-- [ ] Org selection/resolution in the auth flow (keys are org-scoped, not user-scoped).
-- [ ] Native Codex plugin "apps" auth (`.app.json`, `appsNeedingAuth`, `policy.authentication`).
+### Auth (deferred — not yet designed)
+- [ ] Improve auth/onboarding beyond manual key paste. Approach is **undecided** — do not assume
+      any specific flow (browser / loopback / OAuth / native apps auth / org-selection) until it's
+      actually designed. Today: manual `CROSMOS_API_KEY` / `~/.crosmos/credentials.json`.
 
 ### Distribution (deferred from the v0 "npx-installer" decision)
 - [ ] Native Codex marketplace plugin (`plugin.json` + `marketplace.json` + `interface` block).
@@ -44,7 +43,7 @@ Deliberately minimal — prove the loop end-to-end, then iterate.
 
 ### Scoping (deferred from the v0 "single space" decision — the real blocker)
 - [ ] Per-project auto-created/resolved spaces (repo → space mapping).
-- [ ] User-level vs project-level memory separation (supermemory's user+project containers).
+- [ ] User-level vs project-level memory separation (separate user-wide and per-project containers).
       Blocked: backend has no free-form user/project tags; everything is a space.
 - [ ] Git worktree handling (share vs isolate memory across worktrees).
 - [ ] Branch-aware scoping.
@@ -70,11 +69,11 @@ Deliberately minimal — prove the loop end-to-end, then iterate.
 - [ ] `/crosmos-forget` — needs backend natural-language forget (only delete-by-UUID today).
 - [ ] `/crosmos-status`, spaces management skills.
 
-### Backend asks (needed to fully match/beat supermemory)
+### Backend asks
 - [ ] `profile`/digest endpoint.
 - [ ] Natural-language `forget` endpoint.
 - [ ] Free-form user/project tags on search (or a sanctioned per-project space pattern).
-- [ ] Agent-friendly key issuance for the browser auth flow.
+- [ ] Agent-friendly key issuance (for whatever auth flow is eventually chosen).
 
 ### Quality / infra
 - [ ] Unit tests (transcript parsing, redaction, config precedence, hooks.json merge idempotency).
