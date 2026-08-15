@@ -1,0 +1,34 @@
+{
+    "name": "@crosmos/codex",
+    "version": "1.0.0",
+    "description": "Persistent project memory for OpenAI Codex.",
+    "type": "commonjs",
+    "bin": {
+        "crosmos-codex": "./dist/cli.js"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "test": "npm run typecheck && npm run build",
+        "format": "biome format --write .",
+        "prepack": "npm run build"
+    },
+    "dependencies": {
+        "crosmos": "^0.1.0"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.8",
+        "@types/node": "^20.17.6",
+        "typescript": "^5.8.3"
+    },
+    "files": [
+        "dist",
+        ".codex-plugin"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}
