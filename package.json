@@ -9,12 +9,12 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
-        "test": "npm run typecheck && npm run build",
+        "test": "npm run build && node --test test/hooks.test.mjs",
         "format": "biome format --write .",
         "prepack": "npm run build"
     },
     "dependencies": {
-        "crosmos": "^0.1.0"
+        "crosmos": "github:crosmos-labs/crosmos-ts-sdk#v0.3.2"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.8",
