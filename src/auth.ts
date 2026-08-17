@@ -1,4 +1,4 @@
-import Crosmos from "crosmos";
+import Crosmos, { type ClientOptions } from "crosmos";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -16,14 +16,22 @@ type StoredCredentials = {
 export type AuthConfig = {
     apiKey: string;
     apiUrl?: string;
-    debug: boolean;
 };
 
+export type CrosmosClientOverrides = Pick<
+    ClientOptions,
+    "maxRetries" | "timeout"
+>;
+
+export type ConnectionStatus = "authenticated" | "rejected" | "unavailable";
+
+/** Trims a string value and treats empty input as absent. */
 function value(value: string | undefined): string | undefined {
     const trimmed = value?.trim();
     return trimmed || undefined;
 }
 
+/** Identifies a missing-file error without depending on Node error classes. */
 function isMissingFile(error: unknown): boolean {
     return (
         typeof error === "object" &&
@@ -33,6 +41,7 @@ function isMissingFile(error: unknown): boolean {
     );
 }
 
+/** Reads the shared credentials file and validates its supported fields. */
 function readCredentials(): StoredCredentials | null {
     let raw: string;
 
@@ -82,6 +91,7 @@ function readCredentials(): StoredCredentials | null {
     };
 }
 
+/** Validates that an API URL uses an absolute HTTP or HTTPS scheme. */
 function validateApiUrl(apiUrl: string): string {
     let parsed: URL;
 
@@ -102,17 +112,20 @@ function validateApiUrl(apiUrl: string): string {
     return apiUrl;
 }
 
+/** Resolves the API URL from the environment before stored credentials. */
 function resolveApiUrl(stored: StoredCredentials | null): string | undefined {
     const apiUrl = value(process.env.CROSMOS_API_URL) ?? stored?.api_url;
     return apiUrl ? validateApiUrl(apiUrl) : undefined;
 }
 
-function debugEnabled(): boolean {
+/** Converts CROSMOS_DEBUG into the boolean used by CLI and hook clients. */
+export function isDebugEnabled(): boolean {
     return ["1", "true", "yes", "on"].includes(
         (process.env.CROSMOS_DEBUG || "").trim().toLowerCase(),
     );
 }
 
+/** Combines environment and stored credentials into the active auth config. */
 function resolveAuthFrom(stored: StoredCredentials | null): AuthConfig | null {
     const apiKey = value(process.env.CROSMOS_API_KEY) ?? stored?.api_key;
 
@@ -120,9 +133,10 @@ function resolveAuthFrom(stored: StoredCredentials | null): AuthConfig | null {
         return null;
     }
 
-    return { apiKey, apiUrl: resolveApiUrl(stored), debug: debugEnabled() };
+    return { apiKey, apiUrl: resolveApiUrl(stored) };
 }
 
+/** Resolves authentication with environment variables taking precedence. */
 export function resolveAuth(): AuthConfig | null {
     const environmentApiKey = value(process.env.CROSMOS_API_KEY);
     let stored: StoredCredentials | null = null;
@@ -138,8 +152,10 @@ export function resolveAuth(): AuthConfig | null {
     return resolveAuthFrom(stored);
 }
 
+/** Creates a Crosmos SDK client using auth settings and optional client overrides. */
 export function createCrosmosClient(
     auth: AuthConfig | null = resolveAuth(),
+    overrides: CrosmosClientOverrides = {},
 ): Crosmos | null {
     if (!auth) {
         return null;
@@ -148,10 +164,33 @@ export function createCrosmosClient(
     return new Crosmos({
         apiKey: auth.apiKey,
         ...(auth.apiUrl ? { baseURL: auth.apiUrl } : {}),
-        logLevel: auth.debug ? "debug" : undefined,
+        // Keep SDK logs out of plugin processes; plugin diagnostics use its file logger.
+        logLevel: "off",
+        ...overrides,
     });
 }
 
+/** Checks authenticated access without selecting a memory space. */
+export async function checkConnection(
+    client: Pick<Crosmos, "spaces">,
+): Promise<ConnectionStatus> {
+    try {
+        await client.spaces.list({ limit: 1 });
+        return "authenticated";
+    } catch (error) {
+        const status =
+            typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            typeof error.status === "number"
+                ? error.status
+                : undefined;
+
+        return status === 401 || status === 403 ? "rejected" : "unavailable";
+    }
+}
+
+/** Verifies an API key by making an authenticated spaces request. */
 async function verifyApiKey(auth: AuthConfig): Promise<void> {
     const client = createCrosmosClient(auth);
 
@@ -159,15 +198,14 @@ async function verifyApiKey(auth: AuthConfig): Promise<void> {
         throw new Error("crosmos api key is required.");
     }
 
-    try {
-        await client.spaces.list();
-    } catch {
+    if ((await checkConnection(client)) !== "authenticated") {
         throw new Error(
             "unable to verify crosmos api key. check your api key or try again later.",
         );
     }
 }
 
+/** Persists credentials with restrictive directory and file permissions. */
 function writeCredentials(auth: AuthConfig): void {
     mkdirSync(CREDENTIALS_DIR, { recursive: true, mode: 0o700 });
     const credentials: StoredCredentials = { api_key: auth.apiKey };
@@ -184,6 +222,7 @@ function writeCredentials(auth: AuthConfig): void {
     chmodSync(CREDENTIALS_FILE, 0o600);
 }
 
+/** Reuses or interactively collects, verifies, and stores install credentials. */
 export async function ensureAuthForInstall(): Promise<AuthConfig> {
     const existing = resolveAuth();
 
@@ -206,12 +245,13 @@ export async function ensureAuthForInstall(): Promise<AuthConfig> {
         throw new Error("crosmos api key is required.");
     }
 
-    const auth = { apiKey, apiUrl, debug: debugEnabled() };
+    const auth = { apiKey, apiUrl };
     await verifyApiKey(auth);
     writeCredentials(auth);
     return auth;
 }
 
+/** Converts an unknown thrown value into readable error text. */
 function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
