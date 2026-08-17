@@ -3,13 +3,20 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { ensureAuthForInstall } from "./auth";
+import {
+    checkConnection,
+    createCrosmosClient,
+    ensureAuthForInstall,
+    resolveAuth,
+    type ConnectionStatus,
+} from "./auth";
 
 type JsonObject = Record<string, unknown>;
 
 const CODEX_HOME = process.env.CODEX_HOME || join(homedir(), ".codex");
 const HOOKS_JSON = join(CODEX_HOME, "hooks.json");
 
+/** Reads a JSON object from disk or returns the supplied value when absent. */
 function readJsonFile<T extends JsonObject>(
     filePath: string,
     emptyValue: T,
@@ -49,7 +56,7 @@ async function install(): Promise<void> {
             ? "✓ hooks.json found"
             : "✗ hooks.json not found",
     );
-    console.log("\ninstall scaffold ready.");
+    console.log("\nPlugin installation has finished.");
 }
 
 function uninstall(): void {
@@ -58,14 +65,25 @@ function uninstall(): void {
     console.log("No files removed; uninstall behavior is deferred.");
 }
 
-function status(): void {
-    console.log("\n@crosmos/codex status:\n");
-    console.log(
-        `  CODEX_HOME: ${existsSync(CODEX_HOME) ? `✓ ${CODEX_HOME}` : `✗ not found (${CODEX_HOME})`}`,
-    );
-    console.log(
-        `  hooks.json: ${existsSync(HOOKS_JSON) ? "✓ found" : "✗ not found"}`,
-    );
+async function status(): Promise<number> {
+
+    let connection: ConnectionStatus | "missing";
+
+    try {
+        const auth = resolveAuth();
+        const client = auth ? createCrosmosClient(auth) : null;
+        connection =
+            !auth || !client ? "missing" : await checkConnection(client);
+    } catch {
+        connection = "unavailable";
+    }
+
+	console.log("\n@crosmos/codex status:\n");
+	console.log(`  CODEX_HOME: ${existsSync(CODEX_HOME) ? `✓ ${CODEX_HOME}` : `✗ not found (${CODEX_HOME})`}`);
+	console.log(`  hooks.json: ${existsSync(HOOKS_JSON) ? "✓ found" : "✗ not found"}`);
+    console.log(`  API Key:    ${connection === "authenticated" ? "✓" : "✗"} ${connection}`);
+
+    return connection === "authenticated" ? 0 : 1;
 }
 
 async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
@@ -77,8 +95,7 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
             uninstall();
             return 0;
         case "status":
-            status();
-            return 0;
+            return status();
         default:
             console.error("\nusage: crosmos-codex <install|uninstall|status>");
             return 1;
