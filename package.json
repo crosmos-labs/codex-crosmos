@@ -9,7 +9,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
-        "test": "npm run build && node --test test/hooks.test.mjs",
+        "test": "npm run build && node --test test/hooks.test.mjs test/cli.test.mjs",
         "format": "biome format --write .",
         "prepack": "npm run build"
     },
