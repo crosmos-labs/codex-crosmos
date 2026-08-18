@@ -12,6 +12,7 @@ import { test } from "node:test";
 import {
     hooksRegistered,
     installHookFiles,
+    parseInstallArgs,
     readHooksJson,
     reconcileHooks,
     removeManagedHooks,
@@ -112,4 +113,10 @@ test("rejects a non-array hook event before reconciliation", () => {
         () => reconcileHooks({ hooks: { Stop: {} } }, "/tmp/crosmos-runtime"),
         /invalid hooks configuration for Stop/,
     );
+});
+
+test("parses the explicit install space option", () => {
+    assert.equal(parseInstallArgs(["--space", "space-id"]), "space-id");
+    assert.throws(() => parseInstallArgs(["--space"]), /usage:/);
+    assert.throws(() => parseInstallArgs(["--space", "id", "extra"]), /usage:/);
 });

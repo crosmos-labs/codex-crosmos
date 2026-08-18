@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import prompts from "prompts";
+import {
+    checkConnection,
+    createCrosmosClient,
+    resolveSpace,
+} from "../dist/auth.js";
 import {
     configurationFailure,
     parseHookInput,
     warningMessage,
 } from "../dist/hooks/runtime.js";
-import { checkConnection, createCrosmosClient } from "../dist/auth.js";
 
 test("parses only JSON objects", () => {
     assert.deepEqual(parseHookInput('{"cwd":"/tmp"}'), { cwd: "/tmp" });
@@ -86,4 +91,60 @@ test("disables SDK logging", () => {
             process.env.CROSMOS_LOG = previous;
         }
     }
+});
+
+test("prefers an explicit space over the stored space", async () => {
+    const requested = { id: "requested", name: "Requested" };
+    const client = {
+        spaces: {
+            get: async (id) =>
+                id === requested.id ? requested : { id, name: "Stored" },
+            list: async () => ({ spaces: [] }),
+        },
+    };
+
+    assert.deepEqual(
+        await resolveSpace(client, "stored", requested.id),
+        requested,
+    );
+});
+
+test("falls back to accessible spaces when the stored space is unavailable", async () => {
+    const available = { id: "available", name: "Available" };
+    const client = {
+        spaces: {
+            get: async () => {
+                throw new Error("not found");
+            },
+            list: async () => ({ spaces: [available] }),
+        },
+    };
+
+    assert.deepEqual(await resolveSpace(client, "missing"), available);
+});
+
+test("selects one of the first ten spaces with the prompt", async () => {
+    const spaces = Array.from({ length: 10 }, (_, index) => ({
+        id: `space-${index}`,
+        name: `Space ${index}`,
+    }));
+    prompts.inject(["space-9"]);
+
+    const client = {
+        spaces: {
+            list: async (params) => {
+                assert.deepEqual(params, { limit: 10 });
+                return { spaces };
+            },
+        },
+    };
+
+    assert.deepEqual(await resolveSpace(client), spaces[9]);
+});
+
+test("rejects when no spaces are accessible", async () => {
+    await assert.rejects(
+        resolveSpace({ spaces: { list: async () => ({ spaces: [] }) } }),
+        /no crosmos memory spaces found/,
+    );
 });

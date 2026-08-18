@@ -16,6 +16,7 @@ import {
     checkConnection,
     createCrosmosClient,
     ensureAuthForInstall,
+    ensureSpaceForInstall,
     resolveAuth,
 } from "./auth";
 
@@ -291,16 +292,31 @@ function ensureCodexDir(): void {
     mkdirSync(CODEX_HOME, { recursive: true });
 }
 
-async function install(): Promise<void> {
+/** Reads the optional global space ID from install arguments. */
+export function parseInstallArgs(args: string[]): string | undefined {
+    if (args.length === 0) {
+        return undefined;
+    }
+
+    if (args.length === 2 && args[0] === "--space" && args[1].trim()) {
+        return args[1].trim();
+    }
+
+    throw new Error("usage: crosmos-codex install [--space <space-id>]");
+}
+
+async function install(spaceId?: string): Promise<void> {
     console.log("\nInstalling @crosmos/codex...\n");
 
     const hooks = reconcileHooks(readHooksJson());
-    await ensureAuthForInstall();
+    const auth = await ensureAuthForInstall();
+    const space = await ensureSpaceForInstall(auth, spaceId);
     ensureCodexDir();
     installHookFiles();
     writeHooksJson(hooks);
 
     console.log("✓ crosmos authentication ready");
+    console.log(`✓ crosmos space: ${space.name}`);
     console.log(`✓ hook runtime installed: ${HOOK_RUNTIME_DIR}`);
     console.log("✓ hooks.json registered");
     console.log("\nInstallation complete.");
@@ -327,14 +343,26 @@ function uninstall(): void {
 
 async function status(): Promise<number> {
     let connection: ConnectionStatus | "missing";
+    let space = "✗ not selected";
 
     try {
         const auth = resolveAuth();
         const client = auth ? createCrosmosClient(auth) : null;
         connection =
             !auth || !client ? "missing" : await checkConnection(client);
+
+        if (auth?.spaceId && connection === "authenticated" && client) {
+            try {
+                space = `✓ ${(await client.spaces.get(auth.spaceId)).name}`;
+            } catch {
+                space = "✗ unavailable";
+            }
+        } else if (auth?.spaceId && connection !== "authenticated") {
+            space = "✗ unavailable";
+        }
     } catch {
         connection = "unavailable";
+        space = "✗ unavailable";
     }
 
     const hookRuntimeReady = HOOK_DEFINITIONS.every(({ file }) =>
@@ -357,15 +385,16 @@ async function status(): Promise<number> {
         console.log(`  hook runtime: ${hookRuntimeReady ? "✓ installed" : "✗ not installed"}`);
         console.log(`  hooks.json:   ${hookRegistration}`);
         console.log(`  api key:      ${connection === "authenticated" ? "✓ authenticated" : `✗ ${connection}`}`);
+        console.log(`  space:        ${space}`);
     }
 
-    return connection === "authenticated" ? 0 : 1;
+    return connection === "authenticated" && space.startsWith("✓") ? 0 : 1;
 }
 
 async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
     switch (argv[0]) {
         case "install":
-            await install();
+            await install(parseInstallArgs(argv.slice(1)));
             return 0;
         case "uninstall":
             uninstall();
@@ -373,7 +402,9 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
         case "status":
             return status();
         default:
-            console.error("\nusage: crosmos-codex <install|uninstall|status>");
+            console.error(
+                "\nusage: crosmos-codex <install [--space <space-id>]|uninstall|status>",
+            );
             return 1;
     }
 }

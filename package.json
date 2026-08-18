@@ -9,16 +9,18 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
-        "test": "npm run build && node --test test/hooks.test.mjs test/cli.test.mjs",
+        "test": "npm run build && node --test test/hooks.test.mjs test/cli.test.mjs test/auth.test.mjs",
         "format": "biome format --write .",
         "prepack": "npm run build"
     },
     "dependencies": {
-        "crosmos": "github:crosmos-labs/crosmos-ts-sdk#v0.3.2"
+        "crosmos": "github:crosmos-labs/crosmos-ts-sdk#v0.3.2",
+        "prompts": "^2.4.2"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.8",
         "@types/node": "^20.17.6",
+        "@types/prompts": "^2.4.9",
         "typescript": "^5.8.3"
     },
     "files": [

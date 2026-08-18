@@ -1,9 +1,8 @@
-import Crosmos, { type ClientOptions } from "crosmos";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { createInterface } from "node:readline/promises";
-import { stdin, stdout } from "node:process";
+import Crosmos, { type ClientOptions } from "crosmos";
+import prompts from "prompts";
 
 const CREDENTIALS_DIR = join(homedir(), ".crosmos");
 const CREDENTIALS_FILE = join(CREDENTIALS_DIR, "credentials.json");
@@ -11,11 +10,19 @@ const CREDENTIALS_FILE = join(CREDENTIALS_DIR, "credentials.json");
 type StoredCredentials = {
     api_key?: string;
     api_url?: string;
+    space_id?: string;
+    [key: string]: unknown;
 };
 
 export type AuthConfig = {
     apiKey: string;
     apiUrl?: string;
+    spaceId?: string;
+};
+
+export type CrosmosSpace = {
+    id: string;
+    name: string;
 };
 
 export type CrosmosClientOverrides = Pick<
@@ -85,9 +92,15 @@ function readCredentials(): StoredCredentials | null {
         throw new Error(`invalid credentials file: ${CREDENTIALS_FILE}`);
     }
 
+    if (object.space_id !== undefined && typeof object.space_id !== "string") {
+        throw new Error(`invalid credentials file: ${CREDENTIALS_FILE}`);
+    }
+
     return {
+        ...object,
         api_key: value(object.api_key as string | undefined),
         api_url: value(object.api_url as string | undefined),
+        space_id: value(object.space_id as string | undefined),
     };
 }
 
@@ -133,7 +146,11 @@ function resolveAuthFrom(stored: StoredCredentials | null): AuthConfig | null {
         return null;
     }
 
-    return { apiKey, apiUrl: resolveApiUrl(stored) };
+    return {
+        apiKey,
+        apiUrl: resolveApiUrl(stored),
+        spaceId: stored?.space_id,
+    };
 }
 
 /** Resolves authentication with environment variables taking precedence. */
@@ -206,13 +223,8 @@ async function verifyApiKey(auth: AuthConfig): Promise<void> {
 }
 
 /** Persists credentials with restrictive directory and file permissions. */
-function writeCredentials(auth: AuthConfig): void {
+function writeCredentialFile(credentials: StoredCredentials): void {
     mkdirSync(CREDENTIALS_DIR, { recursive: true, mode: 0o700 });
-    const credentials: StoredCredentials = { api_key: auth.apiKey };
-
-    if (auth.apiUrl) {
-        credentials.api_url = auth.apiUrl;
-    }
 
     writeFileSync(
         CREDENTIALS_FILE,
@@ -220,6 +232,22 @@ function writeCredentials(auth: AuthConfig): void {
         { encoding: "utf8", mode: 0o600 },
     );
     chmodSync(CREDENTIALS_FILE, 0o600);
+}
+
+/** Writes verified credentials and the optional selected space. */
+function writeCredentials(auth: AuthConfig): void {
+    writeCredentialFile({
+        api_key: auth.apiKey,
+        ...(auth.apiUrl ? { api_url: auth.apiUrl } : {}),
+        ...(auth.spaceId ? { space_id: auth.spaceId } : {}),
+    });
+}
+
+/** Updates only the shared space selection without persisting environment values. */
+function writeSpaceSelection(spaceId: string): void {
+    const credentials = readCredentials() ?? {};
+    credentials.space_id = spaceId;
+    writeCredentialFile(credentials);
 }
 
 /** Reuses or interactively collects, verifies, and stores install credentials. */
@@ -232,14 +260,11 @@ export async function ensureAuthForInstall(): Promise<AuthConfig> {
 
     const stored = readCredentials();
     const apiUrl = resolveApiUrl(stored);
-    const readline = createInterface({ input: stdin, output: stdout });
-    let apiKey: string | undefined;
-
-    try {
-        apiKey = value(await readline.question("crosmos api key: "));
-    } finally {
-        readline.close();
-    }
+    const response = await prompts(
+        { type: "password", name: "apiKey", message: "crosmos api key" },
+        { onCancel: () => true },
+    );
+    const apiKey = value(response.apiKey);
 
     if (!apiKey) {
         throw new Error("crosmos api key is required.");
@@ -249,6 +274,88 @@ export async function ensureAuthForInstall(): Promise<AuthConfig> {
     await verifyApiKey(auth);
     writeCredentials(auth);
     return auth;
+}
+
+/** Resolves a requested or stored space, then falls back to interactive selection. */
+export async function resolveSpace(
+    client: Pick<Crosmos, "spaces">,
+    storedSpaceId?: string,
+    requestedSpaceId?: string,
+): Promise<CrosmosSpace> {
+    if (requestedSpaceId) {
+        try {
+            return await client.spaces.get(requestedSpaceId);
+        } catch {
+            throw new Error(
+                "unable to use crosmos memory space. check the space id and try again.",
+            );
+        }
+    }
+
+    if (storedSpaceId) {
+        try {
+            return await client.spaces.get(storedSpaceId);
+        } catch {
+            // The stored space may have been deleted or access may have changed.
+        }
+    }
+
+    let spaces: CrosmosSpace[];
+
+    try {
+        spaces = (await client.spaces.list({ limit: 10 })).spaces;
+    } catch {
+        throw new Error(
+            "unable to load crosmos memory spaces. check your connection and try again.",
+        );
+    }
+
+    if (spaces.length === 0) {
+        throw new Error(
+            "no crosmos memory spaces found. create a space and run install again.",
+        );
+    }
+
+    if (spaces.length === 1) {
+        return spaces[0];
+    }
+
+    const response = await prompts(
+        {
+            type: "select",
+            name: "spaceId",
+            message: "select crosmos space",
+            choices: spaces.map(({ id, name }) => ({ title: name, value: id })),
+        },
+        { onCancel: () => true },
+    );
+    const selected = spaces.find((space) => space.id === response.spaceId);
+
+    if (!selected) {
+        throw new Error("crosmos memory space selection was cancelled.");
+    }
+
+    return selected;
+}
+
+/** Selects, validates, and stores the global memory space used by install. */
+export async function ensureSpaceForInstall(
+    auth: AuthConfig,
+    requestedSpaceId?: string,
+): Promise<CrosmosSpace> {
+    const client = createCrosmosClient(auth);
+
+    if (!client) {
+        throw new Error("crosmos api key is required.");
+    }
+
+    const space = await resolveSpace(client, auth.spaceId, requestedSpaceId);
+    if (value(process.env.CROSMOS_API_KEY)) {
+        writeSpaceSelection(space.id);
+    } else {
+        writeCredentials({ ...auth, spaceId: space.id });
+    }
+    return space;
 }
 
 /** Converts an unknown thrown value into readable error text. */
