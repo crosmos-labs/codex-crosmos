@@ -2,7 +2,6 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import Crosmos, { type ClientOptions } from "crosmos";
-import prompts from "prompts";
 
 const CREDENTIALS_DIR = join(homedir(), ".crosmos");
 const CREDENTIALS_FILE = join(CREDENTIALS_DIR, "credentials.json");
@@ -134,7 +133,8 @@ function resolveApiUrl(stored: StoredCredentials | null): string | undefined {
 /** Converts CROSMOS_DEBUG into the boolean used by CLI and hook clients. */
 export function isDebugEnabled(): boolean {
     return ["1", "true", "yes", "on"].includes(
-        (process.env.CROSMOS_DEBUG || "").trim().toLowerCase(),
+        // temporary: keep hook diagnostics enabled while lifecycle execution is verified
+        (process.env.CROSMOS_DEBUG || "true").trim().toLowerCase(),
     );
 }
 
@@ -260,6 +260,7 @@ export async function ensureAuthForInstall(): Promise<AuthConfig> {
 
     const stored = readCredentials();
     const apiUrl = resolveApiUrl(stored);
+    const { default: prompts } = await import("prompts");
     const response = await prompts(
         { type: "password", name: "apiKey", message: "crosmos api key" },
         { onCancel: () => true },
@@ -320,6 +321,7 @@ export async function resolveSpace(
         return spaces[0];
     }
 
+    const { default: prompts } = await import("prompts");
     const response = await prompts(
         {
             type: "select",

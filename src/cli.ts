@@ -2,6 +2,7 @@
 
 import {
     copyFileSync,
+    cpSync,
     existsSync,
     mkdirSync,
     readFileSync,
@@ -10,7 +11,7 @@ import {
     writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
     type ConnectionStatus,
     checkConnection,
@@ -18,10 +19,10 @@ import {
     ensureAuthForInstall,
     ensureSpaceForInstall,
     resolveAuth,
-} from "./auth";
+} from "./hooks/auth";
 
 type JsonObject = Record<string, unknown>;
-type HookEvent = "SessionStart" | "UserPromptSubmit" | "Stop" | "PreCompact";
+type HookEvent = "UserPromptSubmit" | "Stop" | "PreCompact";
 
 type HookEntry = {
     command?: string;
@@ -48,31 +49,30 @@ const CODEX_HOME = resolve(process.env.CODEX_HOME || join(homedir(), ".codex"));
 const HOOKS_JSON = join(CODEX_HOME, "hooks.json");
 const HOOK_RUNTIME_DIR = join(CODEX_HOME, "crosmos");
 const PACKAGE_HOOKS_DIR = join(__dirname, "hooks");
+const SHARED_RUNTIME_FILE = "runtime.js";
+const SHARED_AUTH_FILE = "auth.js";
+const SHARED_SDK_DIR = join("node_modules", "crosmos");
+const SHARED_SDK_ENTRY = join(SHARED_SDK_DIR, "index.js");
+const PACKAGE_SDK_DIR = dirname(require.resolve("crosmos"));
 
 const HOOK_DEFINITIONS: HookDefinition[] = [
-    {
-        event: "SessionStart",
-        file: "session-start.js",
-        timeout: 90,
-        statusMessage: "recalling crosmos memory",
-    },
     {
         event: "UserPromptSubmit",
         file: "user-prompt-submit.js",
         timeout: 90,
-        statusMessage: "recalling crosmos memory",
+        statusMessage: "Recalling crosmos memory",
     },
     {
         event: "Stop",
         file: "stop.js",
         timeout: 60,
-        statusMessage: "saving crosmos memory",
+        statusMessage: "Saving crosmos memory",
     },
     {
         event: "PreCompact",
         file: "pre-compact.js",
         timeout: 60,
-        statusMessage: "flushing crosmos memory",
+        statusMessage: "Flushing crosmos memory",
     },
 ];
 
@@ -232,13 +232,14 @@ export function removeManagedHooks(
 }
 
 function writeHooksJson(document: HooksDocument, filePath = HOOKS_JSON): void {
-    writeFileSync(filePath, `${JSON.stringify(document, null, 2)}\n`);
+    writeFileSync(filePath, `${JSON.stringify(document, null, 4)}\n`);
 }
 
-// Copies the four bundled hook files into the crosmos runtime folder.
+// Copies the hook entrypoints and their local runtime dependencies.
 export function installHookFiles(
     runtimeDir = HOOK_RUNTIME_DIR,
     sourceDir = PACKAGE_HOOKS_DIR,
+    sdkDir = PACKAGE_SDK_DIR,
 ): void {
     mkdirSync(runtimeDir, { recursive: true });
 
@@ -248,16 +249,43 @@ export function installHookFiles(
             join(runtimeDir, definition.file),
         );
     }
+
+    copyFileSync(
+        join(sourceDir, SHARED_RUNTIME_FILE),
+        join(runtimeDir, SHARED_RUNTIME_FILE),
+    );
+    copyFileSync(
+        join(sourceDir, SHARED_AUTH_FILE),
+        join(runtimeDir, SHARED_AUTH_FILE),
+    );
+    rmSync(join(runtimeDir, SHARED_SDK_DIR), {
+        force: true,
+        recursive: true,
+    });
+    cpSync(sdkDir, join(runtimeDir, SHARED_SDK_DIR), { recursive: true });
 }
 
-// Removes the four crosmos hook files and keeps the folder if other files remain.
+// Removes managed hook files and keeps unrelated files in the runtime folder.
 export function uninstallHookFiles(runtimeDir = HOOK_RUNTIME_DIR): void {
     for (const definition of HOOK_DEFINITIONS) {
         rmSync(join(runtimeDir, definition.file), { force: true });
     }
 
+    rmSync(join(runtimeDir, SHARED_RUNTIME_FILE), { force: true });
+    rmSync(join(runtimeDir, SHARED_AUTH_FILE), { force: true });
+    rmSync(join(runtimeDir, SHARED_SDK_DIR), {
+        force: true,
+        recursive: true,
+    });
+
+    removeEmptyDirectory(join(runtimeDir, "node_modules"));
+    removeEmptyDirectory(runtimeDir);
+}
+
+// Removes a directory only when no unrelated files remain inside it.
+function removeEmptyDirectory(directory: string): void {
     try {
-        rmdirSync(runtimeDir);
+        rmdirSync(directory);
     } catch (error) {
         if (
             !(error instanceof Error) ||
@@ -270,7 +298,7 @@ export function uninstallHookFiles(runtimeDir = HOOK_RUNTIME_DIR): void {
     }
 }
 
-// Checks that all four crosmos commands are registered.
+// Checks that all crosmos commands are registered.
 export function hooksRegistered(
     document: HooksDocument,
     runtimeDir = HOOK_RUNTIME_DIR,
@@ -286,6 +314,16 @@ export function hooksRegistered(
             (group.hooks ?? []).some((hook) => hook.command === command),
         );
     });
+}
+
+/** Checks that all hook entrypoints and their shared runtime are installed. */
+export function hookRuntimeReady(runtimeDir = HOOK_RUNTIME_DIR): boolean {
+    return (
+        existsSync(join(runtimeDir, SHARED_RUNTIME_FILE)) &&
+        existsSync(join(runtimeDir, SHARED_AUTH_FILE)) &&
+        existsSync(join(runtimeDir, SHARED_SDK_ENTRY)) &&
+        HOOK_DEFINITIONS.every(({ file }) => existsSync(join(runtimeDir, file)))
+    );
 }
 
 function ensureCodexDir(): void {
@@ -308,7 +346,9 @@ export function parseInstallArgs(args: string[]): string | undefined {
 async function install(spaceId?: string): Promise<void> {
     console.log("\nInstalling @crosmos/codex...\n");
 
-    const hooks = reconcileHooks(readHooksJson());
+    const hooks = readHooksJson();
+    removeManagedHooks(hooks);
+    reconcileHooks(hooks);
     const auth = await ensureAuthForInstall();
     const space = await ensureSpaceForInstall(auth, spaceId);
     ensureCodexDir();
@@ -365,9 +405,7 @@ async function status(): Promise<number> {
         space = "✗ unavailable";
     }
 
-    const hookRuntimeReady = HOOK_DEFINITIONS.every(({ file }) =>
-        existsSync(join(HOOK_RUNTIME_DIR, file)),
-    );
+    const runtimeReady = hookRuntimeReady();
     let hookRegistration = "✗ not registered";
     try {
         hookRegistration = hooksRegistered(readHooksJson())
@@ -382,7 +420,7 @@ async function status(): Promise<number> {
     {
         console.log("\n@crosmos/codex status:\n");
         console.log(`  CODEX_HOME:   ${CODEX_HOME}`);
-        console.log(`  hook runtime: ${hookRuntimeReady ? "✓ installed" : "✗ not installed"}`);
+        console.log(`  hook runtime: ${runtimeReady ? "✓ installed" : "✗ not installed"}`);
         console.log(`  hooks.json:   ${hookRegistration}`);
         console.log(`  api key:      ${connection === "authenticated" ? "✓ authenticated" : `✗ ${connection}`}`);
         console.log(`  space:        ${space}`);

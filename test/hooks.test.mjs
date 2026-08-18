@@ -5,7 +5,7 @@ import {
     checkConnection,
     createCrosmosClient,
     resolveSpace,
-} from "../dist/auth.js";
+} from "../dist/hooks/auth.js";
 import {
     configurationFailure,
     parseHookInput,

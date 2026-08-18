@@ -1,19 +1,15 @@
-import type Crosmos from "crosmos";
 import { appendFileSync, chmodSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type Crosmos from "crosmos";
 import {
+    type AuthConfig,
     createCrosmosClient,
     isDebugEnabled,
     resolveAuth,
-    type AuthConfig,
-} from "../auth";
+} from "./auth";
 
-export type HookEvent =
-    | "SessionStart"
-    | "UserPromptSubmit"
-    | "Stop"
-    | "PreCompact";
+export type HookEvent = "UserPromptSubmit" | "Stop" | "PreCompact";
 
 export type HookPayload = Record<string, unknown>;
 
@@ -21,7 +17,7 @@ type HookHandler = (
     payload: HookPayload,
     client: Crosmos,
     auth: AuthConfig,
-) => Promise<void> | void;
+) => Promise<string | undefined> | string | undefined;
 
 type DebugFields = Record<string, boolean | null | number | string | undefined>;
 
@@ -53,7 +49,7 @@ export function parseHookInput(raw: string): HookPayload | null {
 /** Runs a lifecycle hook without allowing plugin failures to disrupt Codex. */
 export async function runHook(
     event: HookEvent,
-    handler: HookHandler = () => {},
+    handler: HookHandler = () => undefined,
 ): Promise<void> {
     const startedAt = Date.now();
     const payload = readHookPayload();
@@ -77,6 +73,11 @@ export async function runHook(
         return;
     }
 
+    if (!auth.spaceId) {
+        reportFailure(event, startedAt, "space");
+        return;
+    }
+
     const client = createCrosmosClient(auth, {
         maxRetries: 0,
         timeout: HOOK_TIMEOUT,
@@ -88,7 +89,10 @@ export async function runHook(
     }
 
     try {
-        await handler(payload, client, auth);
+        const additionalContext = await handler(payload, client, auth);
+        if (additionalContext) {
+            writeHookOutput(event, additionalContext);
+        }
         writeDebug(event, startedAt, "success");
     } catch (error) {
         reportFailure(event, startedAt, configurationFailure(error), error);
@@ -137,14 +141,14 @@ export function warningMessage(kind: "authentication" | "space"): string {
         : "Crosmos memory space is unavailable. Run `npx @crosmos/codex status` to check your configuration.";
 }
 
-/** Reports a failure, warning only during SessionStart and logging when enabled. */
+/** Reports a failure, warning only during prompt recall and logging when enabled. */
 function reportFailure(
     event: HookEvent,
     startedAt: number,
     kind: "authentication" | "space" | undefined,
     error?: unknown,
 ): void {
-    if (event === "SessionStart" && kind) {
+    if (event === "UserPromptSubmit" && kind) {
         writeSystemMessage(warningMessage(kind));
     }
 
@@ -166,6 +170,22 @@ function reportFailure(
 function writeSystemMessage(message: string): void {
     try {
         process.stdout.write(`${JSON.stringify({ systemMessage: message })}\n`);
+    } catch {
+        return;
+    }
+}
+
+/** Emits model-visible context in the JSON shape expected by Codex. */
+function writeHookOutput(event: HookEvent, additionalContext: string): void {
+    try {
+        process.stdout.write(
+            `${JSON.stringify({
+                hookSpecificOutput: {
+                    hookEventName: event,
+                    additionalContext,
+                },
+            })}\n`,
+        );
     } catch {
         return;
     }

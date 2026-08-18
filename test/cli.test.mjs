@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
     mkdtempSync,
     readFileSync,
+    rmSync,
     writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+    hookRuntimeReady,
     hooksRegistered,
     installHookFiles,
     parseInstallArgs,
@@ -20,11 +23,13 @@ import {
 } from "../dist/cli.js";
 
 const definitions = [
-    ["SessionStart", "session-start.js"],
     ["UserPromptSubmit", "user-prompt-submit.js"],
     ["Stop", "stop.js"],
     ["PreCompact", "pre-compact.js"],
 ];
+const sharedRuntimeFile = "runtime.js";
+const sharedAuthFile = "auth.js";
+const sharedSdkEntry = join("node_modules", "crosmos", "index.js");
 
 test("reconciles managed hooks without duplicating or replacing unrelated hooks", () => {
     const runtimeDir = "/tmp/crosmos-runtime";
@@ -74,7 +79,7 @@ test("removes only managed hook registrations", () => {
         runtimeDir,
     );
 
-    assert.equal(removeManagedHooks(document, runtimeDir), 4);
+    assert.equal(removeManagedHooks(document, runtimeDir), 3);
     assert.equal(hooksRegistered(document, runtimeDir), false);
     assert.deepEqual(document.hooks.Stop, [
         { hooks: [{ type: "command", command: "node other.js" }] },
@@ -85,18 +90,89 @@ test("copies and removes the managed runtime files", () => {
     const root = mkdtempSync(join(tmpdir(), "crosmos-cli-"));
     const sourceDir = join(root, "source");
     const runtimeDir = join(root, "runtime");
+    const sdkDir = join(root, "sdk");
     mkdirSync(sourceDir);
+    mkdirSync(sdkDir);
 
     for (const [, file] of definitions) {
         const sourceFile = join(sourceDir, file);
         writeFileSync(sourceFile, file);
     }
+    writeFileSync(join(sourceDir, sharedRuntimeFile), sharedRuntimeFile);
+    writeFileSync(join(sourceDir, sharedAuthFile), sharedAuthFile);
+    writeFileSync(join(sdkDir, "index.js"), "sdk");
 
-    installHookFiles(runtimeDir, sourceDir);
+    installHookFiles(runtimeDir, sourceDir, sdkDir);
     assert.equal(readFileSync(join(runtimeDir, "stop.js"), "utf8"), "stop.js");
+    assert.equal(
+        readFileSync(join(runtimeDir, sharedRuntimeFile), "utf8"),
+        sharedRuntimeFile,
+    );
+    assert.equal(
+        readFileSync(join(runtimeDir, sharedAuthFile), "utf8"),
+        sharedAuthFile,
+    );
+    assert.equal(readFileSync(join(runtimeDir, sharedSdkEntry), "utf8"), "sdk");
 
+    writeFileSync(join(runtimeDir, "keep.txt"), "keep");
     uninstallHookFiles(runtimeDir);
-    assert.equal(existsSync(runtimeDir), false);
+    assert.equal(existsSync(join(runtimeDir, sharedRuntimeFile)), false);
+    assert.equal(existsSync(join(runtimeDir, sharedAuthFile)), false);
+    assert.equal(existsSync(join(runtimeDir, sharedSdkEntry)), false);
+    assert.equal(readFileSync(join(runtimeDir, "keep.txt"), "utf8"), "keep");
+    assert.equal(existsSync(runtimeDir), true);
+});
+
+test("status requires the complete shared hook runtime", () => {
+    const root = mkdtempSync(join(tmpdir(), "crosmos-cli-"));
+    const sourceDir = join(root, "source");
+    const runtimeDir = join(root, "runtime");
+    const sdkDir = join(root, "sdk");
+    mkdirSync(sourceDir);
+    mkdirSync(sdkDir);
+
+    for (const [, file] of definitions) {
+        writeFileSync(join(sourceDir, file), file);
+    }
+    writeFileSync(join(sourceDir, sharedRuntimeFile), sharedRuntimeFile);
+    writeFileSync(join(sourceDir, sharedAuthFile), sharedAuthFile);
+    writeFileSync(join(sdkDir, "index.js"), "sdk");
+
+    for (const file of [sharedRuntimeFile, sharedAuthFile, sharedSdkEntry]) {
+        installHookFiles(runtimeDir, sourceDir, sdkDir);
+        assert.equal(hookRuntimeReady(runtimeDir), true);
+        rmSync(join(runtimeDir, file));
+        assert.equal(hookRuntimeReady(runtimeDir), false);
+    }
+});
+
+test("runs a copied hook and writes its debug log", () => {
+    const root = mkdtempSync(join(tmpdir(), "crosmos-hook-"));
+    const runtimeDir = join(root, "runtime");
+    const homeDir = join(root, "home");
+    installHookFiles(runtimeDir);
+
+    const result = spawnSync(
+        process.execPath,
+        [join(runtimeDir, "user-prompt-submit.js")],
+        {
+            env: {
+                ...process.env,
+                CROSMOS_API_KEY: "",
+                CROSMOS_DEBUG: "true",
+                HOME: homeDir,
+            },
+            input: '{"prompt":"remember this"}\n',
+            encoding: "utf8",
+        },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Crosmos authentication is unavailable/);
+    assert.match(
+        readFileSync(join(homeDir, ".crosmos", "codex.log"), "utf8"),
+        /authentication_failure/,
+    );
 });
 
 test("rejects invalid hooks.json before it can be changed", () => {
