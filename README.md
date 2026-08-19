@@ -33,6 +33,12 @@ npx @crosmos/codex install
 The installer asks for your API key and lets you select a memory space. Existing verified
 credentials are reused when available.
 
+It also asks whether to install these optional Codex skills:
+
+- `$crosmos-status`
+- `$crosmos-recall`
+- `$crosmos-save`
+
 For automation or explicit space selection:
 
 ```sh
@@ -58,11 +64,41 @@ your Codex session. PreCompact pending-memory recovery is deferred from v1.
 ```sh
 npx @crosmos/codex install
 npx @crosmos/codex install --space "<space-id>"
+npx @crosmos/codex login
 npx @crosmos/codex status
+npx @crosmos/codex recall "<query>"
+npx @crosmos/codex save "<text>"
+npx @crosmos/codex --help
+npx @crosmos/codex --version
 npx @crosmos/codex uninstall
 ```
 
-`status` checks the API connection, selected memory space, hook runtime, and hook registration.
+`status` checks the API connection, selected memory space, hook runtime, hook registration, and
+managed skills.
+
+Automatic recall still runs before every prompt. Use `$crosmos-recall` only for historical context
+that the current prompt recall did not provide. Use `$crosmos-save` only when you explicitly want
+to store a memory.
+
+The installer manages these Codex skills:
+
+- `$crosmos-status` — check Crosmos configuration and connectivity.
+- `$crosmos-recall` — search selected-space memory on demand.
+- `$crosmos-save` — submit one private memory for ingestion.
+
+> [!IMPORTANT]
+> `$crosmos-status`, `$crosmos-recall`, and `$crosmos-save` make Crosmos API requests from inside
+> Codex. Codex's default `workspace-write` sandbox blocks outbound network access.
+>
+> Enable it in `~/.codex/config.toml`:
+>
+> ```toml
+> [sandbox_workspace_write]
+> network_access = true
+> ```
+>
+> Restart Codex after changing this setting. Crosmos does not modify Codex sandbox settings. See
+> the [Codex advanced configuration](https://learn.chatgpt.com/docs/config-file/config-advanced).
 
 `uninstall` removes Crosmos hook registrations and managed runtime files. It preserves your
 credentials and remote memories.
@@ -86,6 +122,7 @@ reuse it.
 | --- | --- |
 | `~/.crosmos/credentials.json` | Verified API credentials and selected memory space. |
 | `~/.crosmos/codex.log` | Sanitized hook diagnostics when `CROSMOS_DEBUG` is enabled. |
+| `~/.agents/skills/crosmos-*` | Managed skills installed by Crosmos. |
 
 Credentials are stored with restrictive local permissions. Debug logs do not contain prompts,
 responses, API keys, headers, or request bodies.
