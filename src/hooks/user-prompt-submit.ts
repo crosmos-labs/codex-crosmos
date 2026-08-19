@@ -1,5 +1,6 @@
 import type Crosmos from "crosmos";
-import type { AuthConfig } from "./auth";
+import type { AuthConfig } from "../auth";
+import { recallMemory } from "../memory";
 import { type HookPayload, runHook } from "./runtime";
 
 /** Recalls memories relevant to the submitted prompt. */
@@ -15,23 +16,15 @@ async function recallUserPrompt(
 
     const turnId =
         typeof payload.turn_id === "string" ? payload.turn_id.trim() : "";
-    const result = await client.search.hybrid({
-        query: prompt,
-        space_id: auth.spaceId,
-        limit: 5,
-        ...(turnId ? { recall_id: turnId } : {}),
-    });
-    const context = (Array.isArray(result.candidates) ? result.candidates : [])
-        .map((candidate) =>
-            typeof candidate?.content === "string"
-                ? candidate.content.trim()
-                : "",
-        )
-        .filter(Boolean)
-        .join("\n\n");
+    const memories = await recallMemory(
+        client,
+        auth.spaceId,
+        prompt,
+        turnId || undefined,
+    );
 
-    return context
-        ? `<crosmos-memory>\n${context}\n</crosmos-memory>`
+    return memories.length
+        ? `<crosmos-memory>\n${memories.join("\n\n")}\n</crosmos-memory>`
         : undefined;
 }
 

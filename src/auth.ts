@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import Crosmos, { type ClientOptions } from "crosmos";
+import Crosmos from "crosmos";
 
 const CREDENTIALS_DIR = join(homedir(), ".crosmos");
 const CREDENTIALS_FILE = join(CREDENTIALS_DIR, "credentials.json");
@@ -23,11 +23,6 @@ export type CrosmosSpace = {
     id: string;
     name: string;
 };
-
-export type CrosmosClientOverrides = Pick<
-    ClientOptions,
-    "maxRetries" | "timeout"
->;
 
 export type ConnectionStatus = "authenticated" | "rejected" | "unavailable";
 
@@ -171,7 +166,6 @@ export function resolveAuth(): AuthConfig | null {
 /** Creates a Crosmos SDK client using auth settings and optional client overrides. */
 export function createCrosmosClient(
     auth: AuthConfig | null = resolveAuth(),
-    overrides: CrosmosClientOverrides = {},
 ): Crosmos | null {
     if (!auth) {
         return null;
@@ -182,7 +176,8 @@ export function createCrosmosClient(
         ...(auth.apiUrl ? { baseURL: auth.apiUrl } : {}),
         // Keep SDK logs out of plugin processes; plugin diagnostics use its file logger.
         logLevel: "off",
-        ...overrides,
+        maxRetries: 1,
+        timeout: 10_000,
     });
 }
 

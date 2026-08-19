@@ -8,7 +8,7 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type Crosmos from "crosmos";
-import type { AuthConfig } from "./auth";
+import type { AuthConfig } from "../auth";
 import { type HookPayload, runHook } from "./runtime";
 
 type Message = {

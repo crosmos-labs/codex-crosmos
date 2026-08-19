@@ -7,7 +7,7 @@ import {
     createCrosmosClient,
     isDebugEnabled,
     resolveAuth,
-} from "./auth";
+} from "../auth";
 
 export type HookEvent = "UserPromptSubmit" | "Stop";
 
@@ -23,7 +23,6 @@ type DebugFields = Record<string, boolean | null | number | string | undefined>;
 
 const DEBUG_LOG_DIR = join(homedir(), ".crosmos");
 const DEBUG_LOG_FILE = join(DEBUG_LOG_DIR, "codex.log");
-const HOOK_TIMEOUT = 10_000;
 
 /** Parses hook stdin while accepting future Codex fields unchanged. */
 export function parseHookInput(raw: string): HookPayload | null {
@@ -78,10 +77,7 @@ export async function runHook(
         return;
     }
 
-    const client = createCrosmosClient(auth, {
-        maxRetries: 1,
-        timeout: HOOK_TIMEOUT,
-    });
+    const client = createCrosmosClient(auth);
 
     if (!client) {
         reportFailure(event, startedAt, "authentication");
