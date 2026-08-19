@@ -2,6 +2,22 @@
     "name": "@crosmos/codex",
     "version": "1.0.0",
     "description": "Persistent project memory for OpenAI Codex.",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/crosmos-labs/codex-crosmos.git"
+    },
+    "homepage": "https://github.com/crosmos-labs/codex-crosmos",
+    "bugs": {
+        "url": "https://github.com/crosmos-labs/codex-crosmos/issues"
+    },
+    "keywords": [
+        "codex",
+        "openai",
+        "crosmos",
+        "memory",
+        "cli"
+    ],
+    "license": "MIT",
     "type": "commonjs",
     "bin": {
         "crosmos-codex": "./dist/cli.js"
@@ -23,7 +39,8 @@
         "typescript": "^5.8.3"
     },
     "files": [
-        "dist"
+        "dist",
+        "docs"
     ],
     "publishConfig": {
         "access": "public"

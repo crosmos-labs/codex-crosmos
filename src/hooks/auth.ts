@@ -133,8 +133,7 @@ function resolveApiUrl(stored: StoredCredentials | null): string | undefined {
 /** Converts CROSMOS_DEBUG into the boolean used by CLI and hook clients. */
 export function isDebugEnabled(): boolean {
     return ["1", "true", "yes", "on"].includes(
-        // temporary: keep hook diagnostics enabled while lifecycle execution is verified
-        (process.env.CROSMOS_DEBUG || "true").trim().toLowerCase(),
+        (process.env.CROSMOS_DEBUG || "false").trim().toLowerCase(),
     );
 }
 
