@@ -22,7 +22,7 @@ import {
 } from "./hooks/auth";
 
 type JsonObject = Record<string, unknown>;
-type HookEvent = "UserPromptSubmit" | "Stop" | "PreCompact";
+type HookEvent = "UserPromptSubmit" | "Stop";
 
 type HookEntry = {
     command?: string;
@@ -59,20 +59,14 @@ const HOOK_DEFINITIONS: HookDefinition[] = [
     {
         event: "UserPromptSubmit",
         file: "user-prompt-submit.js",
-        timeout: 90,
-        statusMessage: "Recalling crosmos memory",
+        timeout: 25,
+        statusMessage: "Recalling crosmos memory...",
     },
     {
         event: "Stop",
         file: "stop.js",
         timeout: 60,
-        statusMessage: "Saving crosmos memory",
-    },
-    {
-        event: "PreCompact",
-        file: "pre-compact.js",
-        timeout: 60,
-        statusMessage: "Flushing crosmos memory",
+        statusMessage: "Saving crosmos memory...",
     },
 ];
 

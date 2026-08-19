@@ -13,17 +13,26 @@ async function recallUserPrompt(
     const prompt = payload.prompt.trim();
     if (!prompt) return;
 
+    const turnId =
+        typeof payload.turn_id === "string" ? payload.turn_id.trim() : "";
     const result = await client.search.hybrid({
         query: prompt,
         space_id: auth.spaceId,
         limit: 5,
+        ...(turnId ? { recall_id: turnId } : {}),
     });
-    const context = result.candidates
-        .map(({ content }) => content.trim())
+    const context = (Array.isArray(result.candidates) ? result.candidates : [])
+        .map((candidate) =>
+            typeof candidate?.content === "string"
+                ? candidate.content.trim()
+                : "",
+        )
         .filter(Boolean)
         .join("\n\n");
 
-    return context || undefined;
+    return context
+        ? `<crosmos-memory>\n${context}\n</crosmos-memory>`
+        : undefined;
 }
 
 void runHook("UserPromptSubmit", recallUserPrompt);

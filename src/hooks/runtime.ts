@@ -9,7 +9,7 @@ import {
     resolveAuth,
 } from "./auth";
 
-export type HookEvent = "UserPromptSubmit" | "Stop" | "PreCompact";
+export type HookEvent = "UserPromptSubmit" | "Stop";
 
 export type HookPayload = Record<string, unknown>;
 
@@ -23,7 +23,7 @@ type DebugFields = Record<string, boolean | null | number | string | undefined>;
 
 const DEBUG_LOG_DIR = join(homedir(), ".crosmos");
 const DEBUG_LOG_FILE = join(DEBUG_LOG_DIR, "codex.log");
-const HOOK_TIMEOUT = 30_000;
+const HOOK_TIMEOUT = 10_000;
 
 /** Parses hook stdin while accepting future Codex fields unchanged. */
 export function parseHookInput(raw: string): HookPayload | null {
@@ -79,7 +79,7 @@ export async function runHook(
     }
 
     const client = createCrosmosClient(auth, {
-        maxRetries: 0,
+        maxRetries: 1,
         timeout: HOOK_TIMEOUT,
     });
 
