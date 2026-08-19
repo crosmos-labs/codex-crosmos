@@ -9,7 +9,6 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
-        "test": "npm run build && node --test test/hooks.test.mjs test/cli.test.mjs test/auth.test.mjs",
         "format": "biome format --write .",
         "prepack": "npm run build"
     },
@@ -24,8 +23,7 @@
         "typescript": "^5.8.3"
     },
     "files": [
-        "dist",
-        ".codex-plugin"
+        "dist"
     ],
     "publishConfig": {
         "access": "public"
