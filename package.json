@@ -29,7 +29,7 @@
         "prepack": "npm run build"
     },
     "dependencies": {
-        "crosmos": "github:crosmos-labs/crosmos-ts-sdk#v0.3.2",
+        "crosmos": "0.3.2",
         "prompts": "^2.4.2"
     },
     "devDependencies": {
