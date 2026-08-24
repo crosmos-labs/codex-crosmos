@@ -1,6 +1,6 @@
 {
     "name": "@crosmos/codex",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Persistent project memory for OpenAI Codex.",
     "repository": {
         "type": "git",
