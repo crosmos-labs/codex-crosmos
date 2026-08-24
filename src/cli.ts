@@ -47,7 +47,7 @@ const HOOK_RUNTIME_DIR = join(CODEX_HOME, "crosmos");
 const CODEX_SKILLS_DIR = join(homedir(), ".agents", "skills");
 const PACKAGE_SKILLS_DIR = resolve(__dirname, "..", "skills");
 const PACKAGE_VERSION = require("../package.json").version as string;
-const SHARED_FILES = ["auth.js", "memory.js"] as const;
+const SHARED_FILES = ["auth.js", "memory.js", "hooks/runtime.js"] as const;
 const COMMAND_FILES = [
     "commands/recall.js",
     "commands/save.js",
@@ -419,13 +419,13 @@ usage: crosmos-codex <command>
 
 commands:
   install [--space <space-id>]  install hooks and skills
-  uninstall                      remove managed hooks and skills
-  login                          authenticate with crosmos
-  status                         check crosmos configuration
-  recall "<query>"                search crosmos memory
-  save "<text>"                   save a private crosmos memory
-  --help                         show this help
-  --version                      show the installed version
+  uninstall                     remove managed hooks and skills
+  login                         authenticate with crosmos
+  status                        check crosmos configuration
+  recall "<query>"              search crosmos memory
+  save "<text>"                 save a private crosmos memory
+  --help                        show this help
+  --version                     show the installed version
 `);
 }
 

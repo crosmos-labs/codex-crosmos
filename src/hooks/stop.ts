@@ -101,27 +101,62 @@ function readTranscript(
             continue;
         }
 
-        if (!isRecord(record) || record.type !== "event_msg") continue;
+        if (!isRecord(record)) continue;
         if (!isRecord(record.payload)) continue;
 
         const payload = record.payload;
-        const content = stringValue(payload.message);
+        if (record.type === "event_msg") {
+            const content = stringValue(payload.message);
+            if (!content) continue;
 
+            if (payload.type === "user_message") {
+                records.push({ content, line: index + 1, role: "user" });
+            }
+
+            if (
+                payload.type === "agent_message" &&
+                payload.phase === "final_answer"
+            ) {
+                records.push({
+                    content,
+                    line: index + 1,
+                    role: "assistant",
+                });
+            }
+
+            continue;
+        }
+
+        if (record.type !== "response_item" || payload.type !== "message") {
+            continue;
+        }
+
+        const content = messageContent(payload.content);
         if (!content) continue;
 
-        if (payload.type === "user_message") {
+        if (payload.role === "user") {
             records.push({ content, line: index + 1, role: "user" });
         }
 
-        if (
-            payload.type === "agent_message" &&
-            payload.phase === "final_answer"
-        ) {
+        if (payload.role === "assistant" && payload.phase === "final_answer") {
             records.push({ content, line: index + 1, role: "assistant" });
         }
     }
 
     return { endLine: lines.length, records };
+}
+
+/** Joins text segments from a current Codex response item message. */
+function messageContent(content: unknown): string | undefined {
+    if (!Array.isArray(content)) return;
+
+    const text = content
+        .filter(isRecord)
+        .map((item) => stringValue(item.text))
+        .filter((value): value is string => value !== undefined)
+        .join("\n\n");
+
+    return text || undefined;
 }
 
 /** Adds the Stop payload answer when Codex has not flushed it to the transcript. */
